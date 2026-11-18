@@ -1,0 +1,3056 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rakhal — Livestock Farm Manager</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    .modal-backdrop { background-color: rgba(15, 23, 42, 0.55); }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+  <!-- Header -->
+  <header class="bg-emerald-900 text-white shadow-sm sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-wrap items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5">
+        <button id="btn-toggle-sidebar" type="button" aria-label="Toggle navigation menu" class="p-2 rounded-lg bg-emerald-800 hover:bg-emerald-700 text-white border border-emerald-700 transition">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </button>
+        <button id="btn-home-brand" type="button" class="flex items-center gap-2.5 text-left hover:opacity-90 transition">
+        <span class="text-2xl" aria-hidden="true">🐄</span>
+        <div>
+          <h1 class="text-lg font-bold leading-tight">Rakhal</h1>
+          <p class="text-xs text-emerald-200">Livestock Farm Manager</p>
+        </div>
+        </button>
+      </div>
+      <div class="flex items-center gap-1 w-full sm:w-auto">
+        <button id="btn-home-top" type="button" aria-label="Home" title="Home" class="shrink-0 px-2 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-700 border border-emerald-600 text-white text-[11px] sm:text-xs font-semibold whitespace-nowrap transition">🏠</button>
+        <button id="btn-add-expense" type="button" class="flex-1 sm:flex-none text-center px-1.5 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-rose-500 hover:bg-rose-400 text-white text-[11px] sm:text-xs font-semibold whitespace-nowrap transition">+ Expense</button>
+        <button id="btn-add-income" type="button" class="flex-1 sm:flex-none text-center px-1.5 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] sm:text-xs font-semibold whitespace-nowrap transition">+ Income</button>
+        <button id="btn-add-animal" type="button" class="flex-1 sm:flex-none text-center px-1.5 py-1 sm:px-2.5 sm:py-1.5 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-900 text-[11px] sm:text-xs font-semibold whitespace-nowrap transition">+ New Animal</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Collapsible Left Panel & Backdrop -->
+  <div id="sidebar-backdrop" class="fixed inset-0 z-40 hidden bg-slate-900/50 transition-opacity"></div>
+  <aside id="left-sidebar" class="fixed top-0 left-0 z-50 h-full w-64 bg-white border-r border-slate-200 shadow-xl transform -translate-x-full transition-transform duration-200 flex flex-col">
+    <div class="px-4 py-3.5 bg-emerald-900 text-white flex items-center justify-between">
+      <span class="font-bold text-sm">Farm Sections</span>
+      <button id="btn-close-sidebar" type="button" aria-label="Collapse menu" class="p-1 rounded-lg hover:bg-emerald-800 text-emerald-100 text-lg leading-none">&times;</button>
+    </div>
+    <nav id="main-tabs" class="p-3 space-y-1.5 flex-1 overflow-y-auto" aria-label="Main sections">
+      <button type="button" data-tab="animals" class="tab-btn w-full text-left px-3.5 py-2.5 rounded-lg text-sm font-semibold bg-emerald-800 text-white">🐄 Animals &amp; Herd</button>
+      <button type="button" data-tab="finance" class="tab-btn w-full text-left px-3.5 py-2.5 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-100">💰 Finance &amp; Profit/Loss</button>
+      <button type="button" data-tab="logs" class="tab-btn w-full text-left px-3.5 py-2.5 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-100">📝 All Farm Logs</button>
+      <button type="button" data-tab="disease" class="tab-btn w-full text-left px-3.5 py-2.5 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-100">🩺 Disease Management</button>
+      <button type="button" data-tab="alerts" class="tab-btn w-full text-left px-3.5 py-2.5 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-100">📅 Alerts &amp; Backup</button>
+    </nav>
+    <div class="p-3 border-t border-slate-200 bg-slate-50 space-y-2">
+      <div id="sb-user-box" class="text-xs text-slate-600 truncate">Not signed in (Local mode)</div>
+      <button id="btn-open-auth-sidebar" type="button" class="w-full px-3 py-2 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-xs font-semibold">🔐 Account &amp; Supabase Sync</button>
+      <button id="btn-download-app-sidebar" type="button" class="w-full px-3 py-2 rounded-lg bg-emerald-800 hover:bg-emerald-700 text-white text-xs font-semibold">📥 Download App (.html)</button>
+    </div>
+  </aside>
+
+  <main class="max-w-6xl mx-auto px-4 py-5 space-y-5">
+    <!-- KPI Summary -->
+    <section id="kpi-grid" class="grid grid-cols-2 lg:grid-cols-4 gap-3"></section>
+
+
+
+    <!-- Animals List Panel -->
+    <section id="panel-animals" class="space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex flex-wrap items-center gap-2">
+          <label for="filter-species" class="text-xs font-medium text-slate-600">Species:</label>
+          <select id="filter-species" class="text-sm rounded-lg border border-slate-300 bg-white px-2.5 py-1.5">
+            <option value="all">All Species</option>
+            <option value="Cattle">Cattle</option>
+            <option value="Goat">Goat</option>
+            <option value="Sheep">Sheep</option>
+            <option value="Buffalo">Buffalo</option>
+          </select>
+          <label for="filter-purpose" class="text-xs font-medium text-slate-600 ml-1">Purpose:</label>
+          <select id="filter-purpose" class="text-sm rounded-lg border border-slate-300 bg-white px-2.5 py-1.5">
+            <option value="all">All Purposes</option>
+            <option value="Milk Production">Milk Production</option>
+            <option value="Meat">Meat / Fattening</option>
+            <option value="Dual">Dual-Purpose</option>
+          </select>
+          <label for="filter-origin" class="text-xs font-medium text-slate-600 ml-1">Origin:</label>
+          <select id="filter-origin" class="text-sm rounded-lg border border-slate-300 bg-white px-2.5 py-1.5">
+            <option value="all">All Origins</option>
+            <option value="Born">Born on Farm</option>
+            <option value="Bought">Bought</option>
+          </select>
+          <label for="filter-status" class="text-xs font-medium text-slate-600 ml-1">Status:</label>
+          <select id="filter-status" class="text-sm rounded-lg border border-slate-300 bg-white px-2.5 py-1.5">
+            <option value="Active">Active Only</option>
+            <option value="Sold">Sold</option>
+            <option value="Deceased">Deceased</option>
+            <option value="all">All Statuses</option>
+          </select>
+        </div>
+        <p class="text-xs text-slate-500">Tap any <strong>animal's name</strong> to open its profile and add milk, breeding, parturition, or treatment records.</p>
+      </div>
+      <div id="animals-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </section>
+
+    <!-- Dedicated Animal Profile Panel -->
+    <section id="panel-profile" class="hidden space-y-4"></section>
+
+    <!-- Finance Panel -->
+    <section id="panel-finance" class="hidden space-y-4">
+      <div id="finance-summary-cards" class="grid grid-cols-1 sm:grid-cols-3 gap-3"></div>
+      <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h2 class="text-sm font-bold text-slate-800">Category Breakdown (BDT)</h2>
+          <button id="btn-export-finance-pdf" type="button" class="px-3 py-1.5 rounded-lg bg-sky-100 hover:bg-sky-200 text-sky-900 text-xs font-semibold">Export Finance PDF</button>
+        </div>
+        <div id="finance-breakdown" class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs"></div>
+      </div>
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex flex-wrap items-center gap-2">
+          <label for="filter-tx-type" class="text-xs font-medium text-slate-600">Type:</label>
+          <select id="filter-tx-type" class="text-sm rounded-lg border border-slate-300 bg-white px-2.5 py-1.5">
+            <option value="all">All Transactions</option>
+            <option value="expense">Expenses Only</option>
+            <option value="income">Income Only</option>
+          </select>
+          <label for="filter-tx-cat" class="text-xs font-medium text-slate-600 ml-1">Category:</label>
+          <select id="filter-tx-cat" class="text-sm rounded-lg border border-slate-300 bg-white px-2.5 py-1.5">
+            <option value="all">All Categories</option>
+          </select>
+        </div>
+        <div class="flex items-center gap-2">
+          <button id="btn-fin-add-exp" type="button" class="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-xs font-semibold">+ Record Purchase / Expense</button>
+          <button id="btn-fin-add-inc" type="button" class="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold">+ Record Sale / Income</button>
+        </div>
+      </div>
+      <div class="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-slate-100 text-slate-600 text-xs uppercase">
+            <tr>
+              <th class="px-4 py-2.5">Date</th>
+              <th class="px-4 py-2.5">Type</th>
+              <th class="px-4 py-2.5">Category</th>
+              <th class="px-4 py-2.5">Item / Description</th>
+              <th class="px-4 py-2.5 text-right">Amount (BDT)</th>
+              <th class="px-4 py-2.5 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="finance-table-body" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- All Farm Logs Panel -->
+    <section id="panel-logs" class="hidden space-y-4">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <div class="flex flex-wrap items-center gap-2">
+          <label for="filter-log-cat" class="text-xs font-medium text-slate-600">Category:</label>
+          <select id="filter-log-cat" class="text-sm rounded-lg border border-slate-300 bg-white px-2.5 py-1.5">
+            <option value="all">All Records</option>
+            <option value="Vaccination">Vaccination</option>
+            <option value="Medication">Medication</option>
+            <option value="Breeding">Breeding / AI</option>
+            <option value="Parturition">Parturition</option>
+            <option value="Miscarriage">Miscarriage</option>
+            <option value="Weight">Weight Gain</option>
+            <option value="Milk Yield">Milk Yield</option>
+            <option value="Death">Death</option>
+            <option value="Adjustment">Adjustment</option>
+          </select>
+        </div>
+        <button id="btn-reset-demo" type="button" class="text-xs px-3 py-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700">Reset Sample Data</button>
+      </div>
+      <div class="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+        <table class="w-full text-left text-sm">
+          <thead class="bg-slate-100 text-slate-600 text-xs uppercase">
+            <tr>
+              <th class="px-4 py-2.5">Date</th>
+              <th class="px-4 py-2.5">Animal</th>
+              <th class="px-4 py-2.5">Category</th>
+              <th class="px-4 py-2.5">Details</th>
+              <th class="px-4 py-2.5 text-right">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="logs-table-body" class="divide-y divide-slate-100"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Disease Management Panel -->
+    <section id="panel-disease" class="hidden space-y-4">
+      <div class="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-xs sm:text-sm text-amber-950 font-medium">
+        <strong>Veterinary Disclaimer:</strong> Always consult a registered veterinarian before administering any medicine, vaccine, or nutritional supplement. This tool provides preliminary screening only.
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- Photo Upload & Visual Guide -->
+        <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+          <h2 class="text-sm font-bold text-slate-800">1. Upload Photos for Visual Disease Screening</h2>
+          <p class="text-xs text-slate-500">Upload photos of the animal, skin lesions (LSD lumps, goosebumps for fever), hoof/mouth (FMD), or dung for probable disease analysis.</p>
+          <div class="grid grid-cols-2 gap-2.5 text-xs">
+            <label class="block rounded-lg border border-dashed border-slate-300 p-2.5 hover:bg-slate-50 cursor-pointer">
+              <span class="font-semibold text-slate-700 block">Skin / Body Lesions</span>
+              <span class="text-[11px] text-slate-400">LSD lumps, goosebumps</span>
+              <input id="dis-photo-skin" type="file" accept="image/*" class="mt-1.5 w-full text-[11px]" />
+            </label>
+            <label class="block rounded-lg border border-dashed border-slate-300 p-2.5 hover:bg-slate-50 cursor-pointer">
+              <span class="font-semibold text-slate-700 block">Hoof / Mouth</span>
+              <span class="text-[11px] text-slate-400">FMD blisters, salivation</span>
+              <input id="dis-photo-hoof" type="file" accept="image/*" class="mt-1.5 w-full text-[11px]" />
+            </label>
+            <label class="block rounded-lg border border-dashed border-slate-300 p-2.5 hover:bg-slate-50 cursor-pointer">
+              <span class="font-semibold text-slate-700 block">Dung / Feces</span>
+              <span class="text-[11px] text-slate-400">Diarrhea, undigested feed</span>
+              <input id="dis-photo-dung" type="file" accept="image/*" class="mt-1.5 w-full text-[11px]" />
+            </label>
+            <label class="block rounded-lg border border-dashed border-slate-300 p-2.5 hover:bg-slate-50 cursor-pointer">
+              <span class="font-semibold text-slate-700 block">Animal Posture</span>
+              <span class="text-[11px] text-slate-400">Bloat, downer cow</span>
+              <input id="dis-photo-body" type="file" accept="image/*" class="mt-1.5 w-full text-[11px]" />
+            </label>
+          </div>
+          <div id="dis-photo-previews" class="grid grid-cols-4 gap-2"></div>
+        </div>
+
+        <!-- Common Signs Checklist -->
+        <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+          <div class="flex items-center justify-between gap-2">
+            <h2 class="text-sm font-bold text-slate-800">2. Select Observed Signs &amp; Symptoms</h2>
+            <select id="dis-animal-select" class="text-xs rounded-lg border border-slate-300 bg-white px-2.5 py-1.5">
+              <option value="">-- Optional: Select Animal --</option>
+            </select>
+          </div>
+          <div id="dis-signs-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs"></div>
+          <div class="flex flex-wrap items-center gap-2 pt-2">
+            <button id="btn-analyze-disease" type="button" class="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-semibold">Analyze Probable Disease &amp; Supplements</button>
+            <button id="btn-clear-disease" type="button" class="px-3 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-xs font-medium text-slate-700">Clear</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Analysis Results -->
+      <div id="dis-results" class="hidden bg-white rounded-xl border border-slate-200 p-4 space-y-4"></div>
+    </section>
+
+    <!-- Alerts & Backup Panel -->
+    <section id="panel-alerts" class="hidden space-y-4">
+      <div class="bg-white rounded-xl border border-sky-200 p-4 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-sm font-bold text-sky-950">🔐 Supabase Multi-User Login &amp; Auto-Sync (Google / Facebook / Email)</h2>
+            <p class="text-xs text-slate-600">Each farmer signs in with their own Google, Facebook, or Email account and gets automatic per-user cloud backup &amp; device sync.</p>
+          </div>
+          <span id="sb-auth-badge" class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">Signed Out</span>
+        </div>
+
+        <!-- Step A: Project Connection Keys -->
+        <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 space-y-2">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-slate-700">1. Supabase Project Configuration</span>
+            <button id="btn-toggle-sb-sql" type="button" class="text-xs font-semibold text-sky-700 underline">Show 5-Step Setup &amp; SQL Code</button>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <label for="sb-url-input" class="block text-[11px] font-semibold text-slate-600 mb-0.5">Supabase Project URL</label>
+              <input id="sb-url-input" type="url" placeholder="https://xyzcompany.supabase.co" class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs" />
+            </div>
+            <div>
+              <label for="sb-key-input" class="block text-[11px] font-semibold text-slate-600 mb-0.5">Supabase Anon Public Key</label>
+              <input id="sb-key-input" type="password" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI..." class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs" />
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="btn-save-sb-config" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold">Connect Supabase Project</button>
+            <span class="text-[11px] text-slate-500">Tip: Once you host the app, you can paste these two values into <code>DEFAULT_SUPABASE_URL</code> and <code>DEFAULT_SUPABASE_ANON_KEY</code> in the HTML file so farmers never need to type them.</span>
+          </div>
+        </div>
+
+        <!-- Step B: Farmer Login / Account Controls -->
+        <div id="sb-logged-out-view" class="space-y-3 pt-1">
+          <div class="flex flex-wrap items-center gap-2">
+            <button id="btn-sb-google" type="button" class="px-3.5 py-2 rounded-lg bg-white hover:bg-slate-50 border border-slate-300 text-slate-800 text-xs font-semibold shadow-sm">🔵 Continue with Google</button>
+            <button id="btn-sb-facebook" type="button" class="px-3.5 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm">📘 Continue with Facebook</button>
+          </div>
+          <div class="border-t border-slate-100 pt-2.5">
+            <p class="text-[11px] font-semibold text-slate-600 mb-1.5">Or Sign In / Sign Up with Email &amp; Password (works immediately without OAuth setup):</p>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              <input id="sb-email" type="email" placeholder="farmer@example.com" class="rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs" />
+              <input id="sb-password" type="password" placeholder="Password (min 6 chars)" class="rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs" />
+              <div class="flex gap-1.5">
+                <button id="btn-sb-email-login" type="button" class="flex-1 px-2.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold">Sign In</button>
+                <button id="btn-sb-email-signup" type="button" class="flex-1 px-2.5 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-xs font-semibold">Sign Up</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="sb-logged-in-view" class="hidden rounded-lg border border-emerald-200 bg-emerald-50/60 p-3 flex flex-wrap items-center justify-between gap-2">
+          <div class="text-xs">
+            <p class="font-bold text-emerald-950">Signed in as: <span id="sb-user-email"></span></p>
+            <p id="sb-last-sync-note" class="text-[11px] text-emerald-800">Auto-sync active — every change backs up to your account.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button id="btn-sb-sync-now" type="button" class="px-2.5 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold">☁️ Sync Now</button>
+            <button id="btn-sb-pull-now" type="button" class="px-2.5 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-xs font-semibold">🔄 Pull Cloud Data</button>
+            <button id="btn-sb-logout" type="button" class="px-2.5 py-1.5 rounded-lg bg-rose-100 hover:bg-rose-200 text-rose-800 text-xs font-semibold">Sign Out</button>
+          </div>
+        </div>
+
+        <!-- Collapsible SQL & Setup Guide -->
+        <div id="sb-sql-guide" class="hidden rounded-lg bg-slate-900 text-slate-100 p-3.5 text-xs space-y-2">
+          <p class="font-bold text-sky-300">Complete 5-Step Supabase Setup Guide:</p>
+          <ol class="list-decimal list-inside space-y-1 text-[11px] text-slate-200">
+            <li>Go to <strong>supabase.com</strong>, sign in, click <strong>New Project</strong>, and name it <strong>Rakhal</strong>.</li>
+            <li>Open <strong>SQL Editor &rarr; New Query</strong> in Supabase, paste the SQL below, and click <strong>Run</strong> (creates the private per-user table with Row Level Security).</li>
+            <li>Go to <strong>Project Settings &rarr; API</strong>, copy your <strong>Project URL</strong> and <strong>anon public key</strong>, and paste them above.</li>
+            <li>Under <strong>Authentication &rarr; Providers</strong>, enable <strong>Email</strong> (enabled by default), <strong>Google</strong> (paste Google OAuth Client ID &amp; Secret), and <strong>Facebook</strong> (paste Facebook App ID &amp; Secret).</li>
+            <li>Host this HTML file on <strong>Netlify Drop (app.netlify.com/drop)</strong> or <strong>Vercel / GitHub Pages</strong> and add that <code>https://</code> URL under <strong>Authentication &rarr; URL Configuration &rarr; Site URL</strong>.</li>
+          </ol>
+          <pre class="overflow-x-auto bg-slate-950 p-2.5 rounded text-[11px] text-emerald-300 select-all">create table if not exists public.farm_profiles (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  farm_data jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.farm_profiles enable row level security;
+
+create policy "Farmers manage only their own farm data"
+  on public.farm_profiles
+  for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);</pre>
+        </div>
+      </div>
+      <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+        <h2 class="text-sm font-bold text-slate-800">Upcoming Breeding, Calving &amp; Health Reminders</h2>
+        <div id="alerts-list" class="space-y-2 text-sm"></div>
+      </div>
+      <div class="bg-white rounded-xl border border-emerald-200 p-4 space-y-3">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-sm font-bold text-emerald-900">☁️ Multi-Device Cloud Sync (PC, Mac &amp; Android)</h2>
+            <p class="text-xs text-slate-600">Paste your Google Apps Script Web App URL (or Firebase Realtime DB <code>.json</code> URL) on each device to synchronize your farm data online.</p>
+          </div>
+          <span id="cloud-sync-status" class="text-[11px] font-semibold px-2.5 py-1 rounded-full bg-slate-100 text-slate-700">Not configured</span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 items-end">
+          <div class="sm:col-span-2">
+            <label for="cloud-sync-url" class="block text-xs font-semibold text-slate-700 mb-1">Cloud Sync URL (HTTPS)</label>
+            <input id="cloud-sync-url" type="url" placeholder="https://script.google.com/macros/s/.../exec" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-xs" />
+          </div>
+          <div class="flex items-center gap-2 pb-1">
+            <label class="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 cursor-pointer">
+              <input id="cloud-auto-sync" type="checkbox" class="rounded border-slate-300 text-emerald-700" />
+              Auto-Sync Changes
+            </label>
+          </div>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="btn-save-sync-url" type="button" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs font-semibold">Save Sync Settings</button>
+          <button id="btn-cloud-push" type="button" class="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold">☁️ Sync Now (Push to Cloud)</button>
+          <button id="btn-cloud-pull" type="button" class="px-3 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-xs font-semibold">🔄 Pull Latest from Cloud</button>
+          <button id="btn-toggle-script-help" type="button" class="text-xs font-semibold text-emerald-800 underline ml-auto">Show Apps Script Setup Code</button>
+        </div>
+
+        <div id="cloud-script-help" class="hidden rounded-lg bg-slate-900 text-slate-100 p-3 text-xs space-y-2">
+          <p class="text-[11px] text-emerald-300">In Google Sheets: <strong>Extensions &rarr; Apps Script</strong>, paste this code, click <strong>Deploy &rarr; New deployment &rarr; Web app</strong> (Execute as: <em>Me</em>, Access: <em>Anyone</em>), and paste the URL above:</p>
+          <pre class="overflow-x-auto text-[11px] leading-relaxed select-all">function doGet() {
+  var cell = SpreadsheetApp.getActiveSpreadsheet().getSheets()[0].getRange("A1").getValue();
+  return ContentService.createTextOutput(cell || "{}").setMimeType(ContentService.MimeType.JSON);
+}
+function doPost(e) {
+  SpreadsheetApp.getActiveSpreadsheet().getSheets()[0].getRange("A1").setValue(e.postData.contents);
+  return ContentService.createTextOutput(JSON.stringify({ status: "ok" })).setMimeType(ContentService.MimeType.JSON);
+}</pre>
+        </div>
+      </div>
+
+      <div class="bg-white rounded-xl border border-slate-200 p-4 space-y-3">
+        <h2 class="text-sm font-bold text-slate-800">Data Backup &amp; Restore</h2>
+        <p class="text-xs text-slate-600">Download a complete JSON backup of your animals, logs, and financial records, or restore from a saved backup file.</p>
+        <div class="flex flex-wrap items-center gap-2">
+          <button id="btn-download-app-main" type="button" class="px-3.5 py-2 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-xs font-semibold">📥 Download Standalone App (.html)</button>
+          <button id="btn-backup-export" type="button" class="px-3.5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold">Download Backup (.json)</button>
+          <label class="px-3.5 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold cursor-pointer">
+            Restore from Backup
+            <input id="input-backup-import" type="file" accept=".json,application/json" class="hidden" />
+          </label>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Modal -->
+  <div id="modal-overlay" class="fixed inset-0 z-50 hidden modal-backdrop flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-5 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+        <h2 id="modal-title" class="text-lg font-bold text-slate-900">Modal</h2>
+        <button id="modal-close" type="button" class="text-slate-400 hover:text-slate-700 text-xl font-bold px-2">&times;</button>
+      </div>
+      <div id="modal-body"></div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" class="fixed bottom-4 right-4 z-50 hidden bg-slate-900 text-white text-sm px-4 py-2.5 rounded-xl shadow-lg"></div>
+
+  <script>
+    const STORAGE_KEY = 'livestock_bd_step1_v1';
+
+    const EXPENSE_CATEGORIES = [
+      'Animal Purchase',
+      'Feed Purchase',
+      'Grass/Straw',
+      'Medicine',
+      'Vet Fees',
+      'Labor Wages',
+      'Farm Equipment',
+      'Electricity Bill',
+      'Land Rent',
+      'Fodder Fertilizer',
+      'Mosquito Coil',
+      'Accessories',
+      'Transport & Hat',
+      'Other'
+    ];
+
+    const EXPENSE_ICONS = {
+      'Animal Purchase': '🐄',
+      'Feed Purchase': '🌾',
+      'Grass/Straw': '🌿',
+      'Medicine': '💊',
+      'Vet Fees': '🩺',
+      'Labor Wages': '👷',
+      'Farm Equipment': '🛠️',
+      'Electricity Bill': '⚡',
+      'Land Rent': '🏡',
+      'Fodder Fertilizer': '🌱',
+      'Mosquito Coil': '🦟',
+      'Accessories': '🧰',
+      'Transport & Hat': '🚚',
+      'Other': '📦'
+    };
+
+    function formatTxCategory(cat) {
+      const icon = EXPENSE_ICONS[cat];
+      return icon ? `${icon} ${cat}` : cat;
+    }
+
+    const INCOME_CATEGORIES = [
+      'Milk Sales',
+      'Animal Sales',
+      'Dung / Manure Sales',
+      'Hide / By-product Sales',
+      'Other'
+    ];
+
+    const LIVESTOCK_COLORS = ['Black', 'White', 'Red / Brown', 'Grey / Ash', 'Fawn / Golden', 'Tan / Cream', 'Other'];
+
+    const BREEDS_BY_SPECIES = {
+      Cattle: ['Holstein Friesian', 'Sahiwal', 'Red Chittagong (RCC)', 'Deshi', 'Jersey', 'Brahman', 'Pabna', 'Munshiganj', 'Australian Friesian Sahiwal (AFS)', 'Other'],
+      Goat: ['Black Bengal', 'Jamunapari', 'Boer', 'Beetal', 'Sirohi', 'Other'],
+      Sheep: ['Deshi Sheep', 'Garole', 'Dorper', 'Suffolk', 'Other'],
+      Buffalo: ['Murrah', 'Nili-Ravi', 'Deshi Buffalo', 'Jaffarabadi', 'Other']
+    };
+
+    function getDefaultState() {
+      return {
+        animals: [
+          {
+            id: 'ani-1',
+            name: 'Lalmoni',
+            tag: 'C-101',
+            species: 'Cattle',
+            purpose: 'Milk Production',
+            sex: 'Female',
+            dob: '2023-03-15',
+            startingWeightKg: 320,
+            weightKg: 385,
+            status: 'Active',
+            origin: 'Bought',
+            purchasePrice: 145000,
+            purchaseDate: '2025-11-01',
+            purchaseSource: 'Sutiakhali Hat, Mymensingh',
+            breedInfo: {
+              unknown: false,
+              parts: [
+                { breed: 'Holstein Friesian', pct: 75 },
+                { breed: 'Red Chittagong (RCC)', pct: 25 }
+              ]
+            },
+            sireId: 'HF-7742 (Govt AI)',
+            sireBreedInfo: { unknown: false, parts: [{ breed: 'Holstein Friesian', pct: 100 }] },
+            damId: 'RCC-18',
+            damAnimalId: '',
+            colorInfo: { type: 'Multi', primary: 'Red / Brown', secondary: 'White', pattern: 'White belly & forehead' },
+            notes: '2nd lactation, calm temperament'
+          },
+          {
+            id: 'ani-2',
+            name: 'Kalo',
+            tag: '',
+            species: 'Goat',
+            purpose: 'Meat',
+            sex: 'Female',
+            dob: '2025-05-10',
+            startingWeightKg: 2.2,
+            weightKg: 18.5,
+            status: 'Active',
+            origin: 'Born',
+            purchasePrice: '',
+            purchaseDate: '',
+            purchaseSource: '',
+            breedInfo: { unknown: false, parts: [{ breed: 'Black Bengal', pct: 100 }] },
+            sireId: 'BB-09',
+            sireBreedInfo: { unknown: false, parts: [{ breed: 'Black Bengal', pct: 100 }] },
+            damId: 'BB-14',
+            damAnimalId: '',
+            colorInfo: { type: 'Single', primary: 'Black', secondary: '', pattern: '' },
+            notes: 'Twin kid lineage, no ear tag'
+          }
+        ],
+        logs: [
+          { id: 'log-1', animalId: 'ani-1', date: '2026-10-20', category: 'Vaccination', detail: 'FMD Booster (2ml SC)', value: '', meta: { vaccine: 'FMD Booster', dose: '2ml SC', nextDue: '2027-04-20' } },
+          { id: 'log-2', animalId: 'ani-1', date: '2026-11-01', category: 'Breeding', detail: 'AI with Sahiwal-204 (1st service)', value: '', meta: { method: 'AI', repeat: false, serviceNo: 1, sireId: 'Sahiwal-204', sireBreedInfo: { unknown: false, parts: [{ breed: 'Sahiwal', pct: 100 }] } } },
+          { id: 'log-3', animalId: 'ani-1', date: '2026-11-15', category: 'Milk Yield', detail: 'Morning milking', value: '8.5 L', meta: { volume: 8.5, time: 'Morning' } },
+          { id: 'log-4', animalId: 'ani-1', date: '2026-11-15', category: 'Weight', detail: 'Heart-girth tape check', value: '385 kg', meta: { weight: 385, method: 'Tape' } },
+          { id: 'log-5', animalId: 'ani-2', date: '2026-11-05', category: 'Medication', detail: 'Albendazole dewormer (1.5ml oral)', value: '', meta: { medicine: 'Albendazole', dose: '1.5ml oral', reason: 'Routine deworming', withdrawal: 7 } },
+          { id: 'log-6', animalId: 'ani-2', date: '2026-11-14', category: 'Weight', detail: 'Scale check', value: '18.5 kg', meta: { weight: 18.5, method: 'Scale' } }
+        ],
+        transactions: [
+          { id: 'tx-1', type: 'expense', date: '2025-11-01', category: 'Animal Purchase', detail: 'Purchased Lalmoni (C-101) from Sutiakhali Hat', qty: '1', amount: 145000, linkedAnimalId: 'ani-1' },
+          { id: 'tx-2', type: 'expense', date: '2026-11-02', category: 'Feed Purchase', detail: 'Maize, Wheat Bran & Mustard Oil Cake', qty: '200 kg', amount: 8800, linkedAnimalId: '' },
+          { id: 'tx-3', type: 'expense', date: '2026-11-05', category: 'Medicine', detail: 'Albendazole & Renasol ADE', qty: '1 lot', amount: 950, linkedAnimalId: '' },
+          { id: 'tx-4', type: 'expense', date: '2026-11-10', category: 'Electricity Bill', detail: 'Shed electricity bill (Nov)', qty: '1', amount: 1450, linkedAnimalId: '' },
+          { id: 'tx-5', type: 'expense', date: '2026-11-12', category: 'Mosquito Coil', detail: 'Shed mosquito coils', qty: '10 boxes', amount: 650, linkedAnimalId: '' },
+          { id: 'tx-6', type: 'income', date: '2026-11-15', category: 'Milk Sales', detail: 'Daily milk sold @ 80 BDT/L', qty: '14.5 L', amount: 1160, linkedAnimalId: 'ani-1' },
+          { id: 'tx-7', type: 'income', date: '2026-11-14', category: 'Dung / Manure Sales', detail: 'Composted cow dung', qty: '10 sacks', amount: 1200, linkedAnimalId: '' }
+        ]
+      };
+    }
+
+    let state = loadState();
+    let activeTab = 'animals';
+    let selectedAnimalId = null;
+
+    function normalizeBreedInfo(b) {
+      if (!b) return { unknown: true, parts: [] };
+      if (Array.isArray(b.parts)) return b;
+      const parts = [];
+      if (b.primaryBreed) parts.push({ breed: b.primaryBreed, pct: Number(b.primaryPct || 100) });
+      if (b.type === 'Crossbreed' && b.secondaryBreed && Number(b.secondaryPct || 0) > 0) {
+        parts.push({ breed: b.secondaryBreed, pct: Number(b.secondaryPct) });
+      }
+      return { unknown: parts.length === 0, parts };
+    }
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.animals)) {
+            parsed.animals.forEach(a => {
+              if (a.purpose === 'Dairy') a.purpose = 'Milk Production';
+              if (!a.status) a.status = 'Active';
+              a.breedInfo = normalizeBreedInfo(a.breedInfo);
+              a.sireBreedInfo = normalizeBreedInfo(a.sireBreedInfo);
+            });
+            if (!Array.isArray(parsed.transactions)) parsed.transactions = getDefaultState().transactions;
+            const catMap = {
+              'Medicine (Vaccine, Supplement & Therapeutic)': 'Medicine',
+              "Veterinarian's Fees": 'Vet Fees',
+              'Labor / Staff Wages': 'Labor Wages',
+              'Fertilizer for Fodder': 'Fodder Fertilizer',
+              'Mosquito Coil & Pest Control': 'Mosquito Coil',
+              'Accessories & Consumables': 'Accessories',
+              'Transport & Hat Fee': 'Transport & Hat'
+            };
+            parsed.transactions.forEach(t => { if (catMap[t.category]) t.category = catMap[t.category]; });
+            return parsed;
+          }
+        }
+      } catch (e) {}
+      return getDefaultState();
+    }
+
+    const SYNC_SETTINGS_KEY = 'rakhal_cloud_sync_v1';
+
+    function loadSyncSettings() {
+      try {
+        const raw = localStorage.getItem(SYNC_SETTINGS_KEY);
+        if (raw) return JSON.parse(raw);
+      } catch (e) {}
+      return { url: '', autoSync: false, lastSynced: '' };
+    }
+
+    function saveSyncSettings(cfg) {
+      try {
+        localStorage.setItem(SYNC_SETTINGS_KEY, JSON.stringify(cfg));
+      } catch (e) {}
+    }
+
+    let syncConfig = loadSyncSettings();
+
+    function saveState() {
+      try {
+        state.updatedAt = new Date().toISOString();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      } catch (e) {}
+      if (syncConfig.url && syncConfig.autoSync) {
+        pushToCloud(true);
+      }
+      if (sbClient && sbCurrentUser) {
+        pushToSupabase(true);
+      }
+    }
+
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.classList.remove('hidden');
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => el.classList.add('hidden'), 2800);
+    }
+
+    function uid(prefix) {
+      return prefix + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function formatAnimalTitle(a) {
+      if (a.name && a.tag) return `${a.name} (${a.tag})`;
+      return a.name || a.tag || 'Unnamed Animal';
+    }
+
+    function formatBreed(b) {
+      const nb = normalizeBreedInfo(b);
+      if (nb.unknown || !nb.parts.length) return 'Unknown Breed';
+      if (nb.parts.length === 1 && nb.parts[0].pct === 100) return `${nb.parts[0].breed} (Purebred)`;
+      return nb.parts.map(p => `${p.pct}% ${p.breed}`).join(' + ');
+    }
+
+    function combineParentBreeds(damBreed, sireBreed) {
+      const d = normalizeBreedInfo(damBreed);
+      const s = normalizeBreedInfo(sireBreed);
+      if (d.unknown && s.unknown) return { unknown: true, parts: [] };
+      const map = {};
+      if (!d.unknown && d.parts.length) {
+        d.parts.forEach(p => { map[p.breed] = (map[p.breed] || 0) + (p.pct * 0.5); });
+      } else {
+        map['Unknown (Dam)'] = 50;
+      }
+      if (!s.unknown && s.parts.length) {
+        s.parts.forEach(p => { map[p.breed] = (map[p.breed] || 0) + (p.pct * 0.5); });
+      } else {
+        map['Unknown (Sire)'] = 50;
+      }
+      const parts = Object.entries(map)
+        .map(([breed, pct]) => ({ breed, pct: Math.round(pct * 10) / 10 }))
+        .sort((a, b) => b.pct - a.pct);
+      return { unknown: false, parts };
+    }
+
+    function formatColor(c) {
+      if (!c || !c.primary) return 'Not specified';
+      if (c.type === 'Multi' && c.secondary) {
+        return `${c.primary} + ${c.secondary}${c.pattern ? ' (' + c.pattern + ')' : ''}`;
+      }
+      return `${c.primary}${c.pattern ? ' (' + c.pattern + ')' : ''}`;
+    }
+
+    function calcAgeText(dateStr) {
+      if (!dateStr) return 'N/A';
+      const start = new Date(dateStr);
+      const now = new Date();
+      const days = Math.max(0, Math.floor((now - start) / (1000 * 60 * 60 * 24)));
+      if (days < 60) return days + ' days';
+      const months = Math.floor(days / 30.4);
+      if (months < 24) return months + ' mos';
+      const years = Math.floor(months / 12);
+      const remMos = months % 12;
+      return years + ' yr' + (years > 1 ? 's' : '') + (remMos ? ' ' + remMos + ' mo' : '');
+    }
+
+    function openModal(title, html) {
+      document.getElementById('modal-title').textContent = title;
+      document.getElementById('modal-body').innerHTML = html;
+      document.getElementById('modal-overlay').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('modal-overlay').classList.add('hidden');
+      document.getElementById('modal-body').innerHTML = '';
+    }
+
+    /* ---------- KPI & Renderers ---------- */
+    function renderKPIs() {
+      const activeAnimals = state.animals.filter(a => (a.status || 'Active') === 'Active');
+      const bornCount = activeAnimals.filter(a => a.origin === 'Born').length;
+      const boughtCount = activeAnimals.filter(a => a.origin === 'Bought').length;
+      const deceasedCount = state.animals.filter(a => a.status === 'Deceased').length;
+
+      const totalIncome = state.transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount || 0), 0);
+      const operatingExpense = state.transactions
+        .filter(t => t.type === 'expense' && t.category !== 'Animal Purchase')
+        .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+      const capitalInvestment = state.transactions
+        .filter(t => t.type === 'expense' && t.category === 'Animal Purchase')
+        .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+      const operatingProfit = totalIncome - operatingExpense;
+
+      const cards = [
+        { label: 'Active Livestock', value: activeAnimals.length.toLocaleString(), sub: `${bornCount} born • ${boughtCount} bought` + (deceasedCount ? ` • ${deceasedCount} deceased` : ''), color: 'text-emerald-800' },
+        { label: 'Total Income', value: '৳' + totalIncome.toLocaleString(), sub: 'Milk, animal & manure sales', color: 'text-emerald-700' },
+        { label: 'Operating Expense', value: '৳' + operatingExpense.toLocaleString(), sub: `Excludes ৳${capitalInvestment.toLocaleString()} animal capital`, color: 'text-rose-700' },
+        { label: 'Operating Profit / Loss', value: (operatingProfit >= 0 ? '৳' : '-৳') + Math.abs(operatingProfit).toLocaleString(), sub: 'Income minus operating expenses', color: operatingProfit >= 0 ? 'text-emerald-700' : 'text-rose-700' }
+      ];
+
+      document.getElementById('kpi-grid').innerHTML = cards.map(c => `
+        <div class="bg-white rounded-xl border border-slate-200 p-3.5 shadow-sm">
+          <p class="text-xs font-medium text-slate-500">${escapeHtml(c.label)}</p>
+          <p class="text-2xl font-bold mt-1 ${c.color}">${escapeHtml(c.value)}</p>
+          <p class="text-xs text-slate-400 mt-0.5">${escapeHtml(c.sub)}</p>
+        </div>
+      `).join('');
+    }
+
+    function renderAnimals() {
+      const sp = document.getElementById('filter-species').value;
+      const pu = document.getElementById('filter-purpose').value;
+      const or = document.getElementById('filter-origin').value;
+      const st = document.getElementById('filter-status').value;
+
+      const list = state.animals.filter(a =>
+        (sp === 'all' || a.species === sp) &&
+        (pu === 'all' || a.purpose === pu) &&
+        (or === 'all' || a.origin === or) &&
+        (st === 'all' || (a.status || 'Active') === st)
+      );
+
+      const container = document.getElementById('animals-list');
+      if (!list.length) {
+        container.innerHTML = `<div class="col-span-full bg-white rounded-xl border border-dashed border-slate-300 p-8 text-center text-sm text-slate-500">No animals match this filter. Click <strong>+ New Animal</strong> to add one.</div>`;
+        return;
+      }
+
+      container.innerHTML = list.map(a => {
+        const isDeceased = a.status === 'Deceased';
+        const logs = state.logs.filter(l => l.animalId === a.id).sort((x, y) => y.date.localeCompare(x.date));
+        const recent = logs[0];
+        const originBadge = a.origin === 'Bought'
+          ? `<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">Bought${a.purchasePrice ? ' • ৳' + Number(a.purchasePrice).toLocaleString() : ''}</span>`
+          : `<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-sky-100 text-sky-800">Born on Farm</span>`;
+        const statusBadge = isDeceased
+          ? `<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-rose-100 text-rose-800">Deceased</span>`
+          : (a.status === 'Sold' ? `<span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">Sold</span>` : '');
+
+        return `
+          <article class="bg-white rounded-xl border ${isDeceased ? 'border-rose-200 bg-rose-50/30' : 'border-slate-200 hover:border-emerald-400'} p-4 shadow-sm flex flex-col justify-between gap-3 transition">
+            <div>
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <div class="flex flex-wrap items-center gap-1.5">
+                    <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">${escapeHtml(a.species)} • ${escapeHtml(a.purpose)}</span>
+                    ${originBadge}
+                    ${statusBadge}
+                  </div>
+                  <button type="button" data-action="open-profile" data-id="${a.id}" class="text-left group mt-1.5 block">
+                    <h3 class="text-base font-bold text-emerald-900 group-hover:text-emerald-600 underline decoration-emerald-300 underline-offset-2">${escapeHtml(formatAnimalTitle(a))}</h3>
+                  </button>
+                  <p class="text-xs text-slate-600">${escapeHtml(formatBreed(a.breedInfo))} • ${escapeHtml(a.sex)} • Age: ${escapeHtml(calcAgeText(a.dob))}</p>
+                  <p class="text-xs text-slate-500">Color: ${escapeHtml(formatColor(a.colorInfo))}</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-lg font-bold text-emerald-800">${a.weightKg ? escapeHtml(a.weightKg) + ' kg' : '—'}</p>
+                  <p class="text-[11px] text-slate-400">Live Weight</p>
+                </div>
+              </div>
+              <div class="mt-2.5 bg-slate-50 rounded-lg p-2.5 text-xs space-y-1">
+                <p><span class="font-semibold text-slate-700">Latest Log:</span> ${recent ? escapeHtml(recent.date + ' — ' + recent.category + ': ' + recent.detail + (recent.value ? ' (' + recent.value + ')' : '')) : 'No records yet'}</p>
+              </div>
+            </div>
+            <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+              <button type="button" data-action="open-profile" data-id="${a.id}" class="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold">Open Animal Profile &rarr;</button>
+              <span class="text-[11px] text-slate-400">${logs.length} record(s)</span>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    function renderProfile() {
+      const panel = document.getElementById('panel-profile');
+      const a = state.animals.find(x => x.id === selectedAnimalId);
+      if (!a) {
+        selectedAnimalId = null;
+        switchTab('animals');
+        return;
+      }
+
+      const isDeceased = a.status === 'Deceased';
+      const logs = state.logs.filter(l => l.animalId === a.id).sort((x, y) => y.date.localeCompare(x.date));
+      const damAnimal = a.damAnimalId ? state.animals.find(x => x.id === a.damAnimalId) : null;
+      const offspring = state.animals.filter(x => x.damAnimalId === a.id);
+
+      const milkTotal = logs.filter(l => l.category === 'Milk Yield').reduce((s, l) => s + (parseFloat(l.value) || 0), 0);
+      const gain = (a.startingWeightKg && a.weightKg) ? (a.weightKg - a.startingWeightKg).toFixed(1) : null;
+
+      panel.innerHTML = `
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <button type="button" data-action="back-home" class="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs sm:text-sm font-semibold shadow-sm">&larr; Back to Home</button>
+          <div class="flex flex-wrap items-center gap-2">
+            ${!isDeceased ? `<button type="button" data-action="add-log" data-id="${a.id}" class="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold">+ Add Record</button>` : ''}
+            <button type="button" data-action="edit-animal" data-id="${a.id}" class="px-3 py-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-800 text-xs font-semibold">Edit Profile</button>
+            <button type="button" data-action="pdf-animal" data-id="${a.id}" class="px-3 py-1.5 rounded-lg bg-sky-100 hover:bg-sky-200 text-sky-900 text-xs font-semibold">Export PDF</button>
+            <button type="button" data-action="delete-animal" data-id="${a.id}" class="px-3 py-1.5 rounded-lg text-rose-600 hover:bg-rose-50 text-xs font-semibold">Delete Animal</button>
+          </div>
+        </div>
+
+        <!-- Animal Summary Card -->
+        <div class="bg-white rounded-xl border border-slate-200 p-5 shadow-sm space-y-4">
+          <div class="flex flex-wrap items-start justify-between gap-3 border-b border-slate-100 pb-3">
+            <div>
+              <div class="flex flex-wrap items-center gap-1.5">
+                <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">${escapeHtml(a.species)} • ${escapeHtml(a.purpose)}</span>
+                <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full ${a.origin === 'Bought' ? 'bg-amber-100 text-amber-800' : 'bg-sky-100 text-sky-800'}">${a.origin === 'Bought' ? 'Bought' : 'Born on Farm'}</span>
+                ${isDeceased ? `<span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800">Deceased (${escapeHtml(a.deathDate)})</span>` : ''}
+              </div>
+              <h2 class="text-xl font-bold text-slate-900 mt-2">${escapeHtml(formatAnimalTitle(a))}</h2>
+              <p class="text-sm text-slate-600">${escapeHtml(formatBreed(a.breedInfo))} • ${escapeHtml(a.sex)} • Age: ${escapeHtml(calcAgeText(a.dob))} (DOB: ${escapeHtml(a.dob)})</p>
+            </div>
+            <div class="text-right">
+              <p class="text-2xl font-bold text-emerald-800">${a.weightKg ? escapeHtml(a.weightKg) + ' kg' : '—'}</p>
+              <p class="text-xs text-slate-500">Start: ${a.startingWeightKg ? escapeHtml(a.startingWeightKg) + ' kg' : 'N/A'}${gain !== null ? ` (${Number(gain) >= 0 ? '+' : ''}${gain} kg)` : ''}</p>
+              ${milkTotal > 0 ? `<p class="text-xs font-semibold text-sky-700 mt-0.5">Logged Milk: ${milkTotal.toFixed(1)} L</p>` : ''}
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+            <div class="bg-slate-50 rounded-lg p-3 space-y-1">
+              <p><span class="font-semibold text-slate-700">Coat Color:</span> ${escapeHtml(formatColor(a.colorInfo))}</p>
+              <p><span class="font-semibold text-slate-700">Origin Details:</span> ${a.origin === 'Bought' ? `Bought on ${escapeHtml(a.purchaseDate || 'N/A')} for ৳${Number(a.purchasePrice || 0).toLocaleString()} (${escapeHtml(a.purchaseSource || 'Market')})` : 'Born on Farm'}</p>
+              ${a.notes ? `<p><span class="font-semibold text-slate-700">Notes:</span> ${escapeHtml(a.notes)}</p>` : ''}
+              ${isDeceased ? `<p class="text-rose-700"><span class="font-semibold">Death Cause:</span> ${escapeHtml(a.deathCause || 'Unspecified')}</p>` : ''}
+            </div>
+            <div class="bg-slate-50 rounded-lg p-3 space-y-1">
+              <p><span class="font-semibold text-slate-700">Sire (Father):</span> ${escapeHtml(a.sireId || 'Unknown')} — ${escapeHtml(formatBreed(a.sireBreedInfo))}</p>
+              <p><span class="font-semibold text-slate-700">Dam (Mother):</span> ${damAnimal ? `<button type="button" data-action="open-profile" data-id="${damAnimal.id}" class="text-emerald-700 underline font-semibold">${escapeHtml(formatAnimalTitle(damAnimal))}</button>` : escapeHtml(a.damId || 'Unknown')}</p>
+              ${offspring.length ? `<p><span class="font-semibold text-slate-700">Offspring (${offspring.length}):</span> ${offspring.map(o => `<button type="button" data-action="open-profile" data-id="${o.id}" class="text-sky-700 underline mr-1.5">${escapeHtml(formatAnimalTitle(o))}</button>`).join('')}</p>` : ''}
+            </div>
+          </div>
+        </div>
+
+        <!-- Animal Record History -->
+        <div class="bg-white rounded-xl border border-slate-200 overflow-x-auto">
+          <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+            <h3 class="text-sm font-bold text-slate-800">Animal History (Milk, Breeding, Parturition, Vaccines, Meds &amp; Weight)</h3>
+            ${!isDeceased ? `<button type="button" data-action="add-log" data-id="${a.id}" class="text-xs px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-semibold">+ Add Entry</button>` : ''}
+          </div>
+          <table class="w-full text-left text-sm">
+            <thead class="bg-slate-100 text-slate-600 text-xs uppercase">
+              <tr>
+                <th class="px-4 py-2.5">Date</th>
+                <th class="px-4 py-2.5">Category</th>
+                <th class="px-4 py-2.5">Details</th>
+                <th class="px-4 py-2.5 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100">
+              ${logs.length ? logs.map(l => `
+                <tr class="hover:bg-slate-50">
+                  <td class="px-4 py-2.5 whitespace-nowrap text-slate-700">${escapeHtml(l.date)}</td>
+                  <td class="px-4 py-2.5"><span class="px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-700">${escapeHtml(l.category)}</span></td>
+                  <td class="px-4 py-2.5 text-slate-600">${escapeHtml(l.detail)}${l.value ? ' <strong>(' + escapeHtml(l.value) + ')</strong>' : ''}</td>
+                  <td class="px-4 py-2.5 text-right whitespace-nowrap space-x-1">
+                    <button type="button" data-action="edit-log" data-id="${l.id}" class="text-xs px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700">Edit</button>
+                    <button type="button" data-action="delete-log" data-id="${l.id}" class="text-xs px-2 py-1 rounded text-rose-600 hover:bg-rose-50">Delete</button>
+                  </td>
+                </tr>
+              `).join('') : '<tr><td colspan="4" class="px-4 py-6 text-center text-slate-500">No records logged for this animal yet.</td></tr>'}
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      panel.insertAdjacentHTML('beforeend', `
+        <div class="pt-1">
+          <button type="button" data-action="back-home" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-white text-xs sm:text-sm font-semibold shadow-sm">&larr; Back to Home</button>
+        </div>
+      `);
+    }
+
+    function renderFinance() {
+      const totalIncome = state.transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount || 0), 0);
+      const opExpense = state.transactions
+        .filter(t => t.type === 'expense' && t.category !== 'Animal Purchase')
+        .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+      const capitalInvest = state.transactions
+        .filter(t => t.type === 'expense' && t.category === 'Animal Purchase')
+        .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+      const opProfit = totalIncome - opExpense;
+
+      document.getElementById('finance-summary-cards').innerHTML = `
+        <div class="bg-white rounded-xl border border-slate-200 p-3.5">
+          <p class="text-xs text-slate-500">Total Income</p>
+          <p class="text-xl font-bold text-emerald-700 mt-1">৳${totalIncome.toLocaleString()}</p>
+          <p class="text-[11px] text-slate-400">Milk, animal &amp; manure sales</p>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-3.5">
+          <p class="text-xs text-slate-500">Operating Expenses</p>
+          <p class="text-xl font-bold text-rose-700 mt-1">৳${opExpense.toLocaleString()}</p>
+          <p class="text-[11px] text-slate-400">Animal Purchase Capital (Asset): ৳${capitalInvest.toLocaleString()}</p>
+        </div>
+        <div class="bg-white rounded-xl border border-slate-200 p-3.5">
+          <p class="text-xs text-slate-500">Operating Profit / Loss</p>
+          <p class="text-xl font-bold ${opProfit >= 0 ? 'text-emerald-700' : 'text-rose-700'} mt-1">${opProfit >= 0 ? '৳' : '-৳'}${Math.abs(opProfit).toLocaleString()}</p>
+          <p class="text-[11px] text-slate-400">Excludes animal purchase capital</p>
+        </div>
+      `;
+
+      const expMap = {};
+      const incMap = {};
+      state.transactions.forEach(t => {
+        if (t.type === 'expense' && t.category !== 'Animal Purchase') expMap[t.category] = (expMap[t.category] || 0) + Number(t.amount || 0);
+        else if (t.type === 'income') incMap[t.category] = (incMap[t.category] || 0) + Number(t.amount || 0);
+      });
+
+      const renderCatBars = (map, total, barColor) => {
+        const entries = Object.entries(map).sort((a, b) => b[1] - a[1]);
+        if (!entries.length) return '<p class="text-slate-400">No entries yet.</p>';
+        return entries.map(([cat, amt]) => {
+          const pct = total > 0 ? Math.round((amt / total) * 100) : 0;
+          return `
+            <div class="space-y-1">
+              <div class="flex justify-between text-slate-700">
+                <span class="truncate pr-2">${escapeHtml(formatTxCategory(cat))}</span>
+                <span class="font-semibold whitespace-nowrap">৳${amt.toLocaleString()} (${pct}%)</span>
+              </div>
+              <div class="w-full bg-slate-100 rounded-full h-1.5">
+                <div class="${barColor} h-1.5 rounded-full" style="width:${pct}%"></div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      };
+
+      document.getElementById('finance-breakdown').innerHTML = `
+        <div class="space-y-2">
+          <h3 class="font-semibold text-rose-700">Operating Expense Breakdown</h3>
+          ${renderCatBars(expMap, opExpense, 'bg-rose-500')}
+        </div>
+        <div class="space-y-2">
+          <h3 class="font-semibold text-emerald-700">Income Breakdown</h3>
+          ${renderCatBars(incMap, totalIncome, 'bg-emerald-600')}
+        </div>
+      `;
+
+      const catSel = document.getElementById('filter-tx-cat');
+      const prevCat = catSel.value;
+      const allCats = Array.from(new Set(state.transactions.map(t => t.category))).sort();
+      catSel.innerHTML = '<option value="all">All Categories</option>' +
+        allCats.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(formatTxCategory(c))}</option>`).join('');
+      if (allCats.includes(prevCat)) catSel.value = prevCat;
+
+      const fType = document.getElementById('filter-tx-type').value;
+      const fCat = catSel.value;
+      const rows = state.transactions
+        .filter(t => (fType === 'all' || t.type === fType) && (fCat === 'all' || t.category === fCat))
+        .sort((a, b) => b.date.localeCompare(a.date));
+
+      const tbody = document.getElementById('finance-table-body');
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="px-4 py-6 text-center text-slate-500">No financial entries found.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = rows.map(t => `
+        <tr class="hover:bg-slate-50">
+          <td class="px-4 py-2.5 whitespace-nowrap text-slate-700">${escapeHtml(t.date)}</td>
+          <td class="px-4 py-2.5">
+            <span class="px-2 py-0.5 rounded-full text-xs font-semibold ${t.type === 'income' ? 'bg-emerald-100 text-emerald-800' : (t.category === 'Animal Purchase' ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-800')}">${t.type === 'income' ? 'Income' : (t.category === 'Animal Purchase' ? 'Capital Asset' : 'Expense')}</span>
+          </td>
+          <td class="px-4 py-2.5 text-slate-800 font-medium">${escapeHtml(formatTxCategory(t.category))}</td>
+          <td class="px-4 py-2.5 text-slate-600">${escapeHtml(t.detail)}${t.qty ? ' <span class="text-xs text-slate-400">(' + escapeHtml(t.qty) + ')</span>' : ''}</td>
+          <td class="px-4 py-2.5 text-right font-bold whitespace-nowrap ${t.type === 'income' ? 'text-emerald-700' : 'text-rose-700'}">${t.type === 'income' ? '+' : '-'}৳${Number(t.amount || 0).toLocaleString()}</td>
+          <td class="px-4 py-2.5 text-right whitespace-nowrap space-x-1">
+            <button type="button" data-action="edit-tx" data-id="${t.id}" class="text-xs px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700">Edit</button>
+            <button type="button" data-action="delete-tx" data-id="${t.id}" class="text-xs px-2 py-1 rounded text-rose-600 hover:bg-rose-50">Delete</button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function renderLogsTable() {
+      const cat = document.getElementById('filter-log-cat').value;
+      const rows = state.logs
+        .filter(l => cat === 'all' || l.category === cat)
+        .sort((a, b) => b.date.localeCompare(a.date));
+
+      const tbody = document.getElementById('logs-table-body');
+      if (!rows.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="px-4 py-6 text-center text-slate-500">No records found.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = rows.map(l => {
+        const ani = state.animals.find(a => a.id === l.animalId);
+        return `
+          <tr class="hover:bg-slate-50">
+            <td class="px-4 py-2.5 whitespace-nowrap text-slate-700">${escapeHtml(l.date)}</td>
+            <td class="px-4 py-2.5 font-medium text-slate-900">
+              ${ani ? `<button type="button" data-action="open-profile" data-id="${ani.id}" class="text-emerald-800 hover:underline">${escapeHtml(formatAnimalTitle(ani))}</button>` : 'Deleted Animal'}
+            </td>
+            <td class="px-4 py-2.5"><span class="px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-700">${escapeHtml(l.category)}</span></td>
+            <td class="px-4 py-2.5 text-slate-600">${escapeHtml(l.detail)}${l.value ? ' <strong>(' + escapeHtml(l.value) + ')</strong>' : ''}</td>
+            <td class="px-4 py-2.5 text-right whitespace-nowrap space-x-1">
+              <button type="button" data-action="edit-log" data-id="${l.id}" class="text-xs px-2 py-1 rounded bg-slate-100 hover:bg-slate-200 text-slate-700">Edit</button>
+              <button type="button" data-action="delete-log" data-id="${l.id}" class="text-xs px-2 py-1 rounded text-rose-600 hover:bg-rose-50">Delete</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderAlerts() {
+      const container = document.getElementById('alerts-list');
+      const alerts = [];
+      const now = new Date();
+
+      state.logs.forEach(l => {
+        const ani = state.animals.find(a => a.id === l.animalId);
+        if (!ani || ani.status === 'Deceased') return;
+        if (l.category === 'Breeding') {
+          const gestDays = ani.species === 'Goat' || ani.species === 'Sheep' ? 150 : (ani.species === 'Buffalo' ? 310 : 283);
+          const due = new Date(l.date);
+          due.setDate(due.getDate() + gestDays);
+          const diffDays = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
+          if (diffDays >= -14) {
+            alerts.push({
+              badge: diffDays <= 14 ? 'bg-rose-100 text-rose-800' : 'bg-amber-100 text-amber-800',
+              title: `${formatAnimalTitle(ani)} — Expected ${ani.species === 'Goat' || ani.species === 'Sheep' ? 'Kidding/Lambing' : 'Calving'}`,
+              sub: `Bred on ${l.date} • Due ~${due.toISOString().slice(0, 10)} (${diffDays >= 0 ? diffDays + ' days left' : Math.abs(diffDays) + ' days overdue'})`
+            });
+          }
+        }
+        if (l.category === 'Vaccination') {
+          const nextDue = l.meta?.nextDue ? new Date(l.meta.nextDue) : (() => { const d = new Date(l.date); d.setMonth(d.getMonth() + 6); return d; })();
+          const diffDays = Math.ceil((nextDue - now) / (1000 * 60 * 60 * 24));
+          if (diffDays <= 45) {
+            alerts.push({
+              badge: diffDays <= 7 ? 'bg-rose-100 text-rose-800' : 'bg-sky-100 text-sky-800',
+              title: `${formatAnimalTitle(ani)} — Vaccine Booster Due`,
+              sub: `${l.detail} (${l.date}) • Next due: ${nextDue.toISOString().slice(0, 10)}`
+            });
+          }
+        }
+      });
+
+      if (!alerts.length) {
+        container.innerHTML = '<p class="text-xs text-slate-500">No urgent breeding or vaccine reminders right now.</p>';
+        return;
+      }
+
+      container.innerHTML = alerts.map(al => `
+        <div class="flex flex-wrap items-center justify-between gap-2 p-3 rounded-lg border border-slate-200 bg-slate-50">
+          <div>
+            <p class="font-semibold text-slate-900 text-sm">${escapeHtml(al.title)}</p>
+            <p class="text-xs text-slate-600">${escapeHtml(al.sub)}</p>
+          </div>
+          <span class="px-2.5 py-1 rounded-full text-xs font-semibold ${al.badge}">Reminder</span>
+        </div>
+      `).join('');
+    }
+
+    function renderAll() {
+      renderKPIs();
+      renderAnimals();
+      if (selectedAnimalId) renderProfile();
+      renderFinance();
+      renderLogsTable();
+      renderAlerts();
+      renderDiseaseAnimalDropdown();
+    }
+
+    function switchTab(tab) {
+      activeTab = tab;
+      if (tab !== 'profile') selectedAnimalId = null;
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        const cur = btn.dataset.tab === tab;
+        btn.className = cur
+          ? 'tab-btn w-full text-left px-3.5 py-2.5 rounded-lg text-sm font-semibold bg-emerald-800 text-white'
+          : 'tab-btn w-full text-left px-3.5 py-2.5 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-100';
+      });
+      closeSidebar();
+      document.getElementById('kpi-grid').classList.toggle('hidden', tab !== 'animals');
+      ['animals', 'profile', 'disease', 'finance', 'logs', 'alerts'].forEach(t => {
+        document.getElementById('panel-' + t).classList.toggle('hidden', t !== tab);
+      });
+    }
+
+    function openAnimalProfile(animalId) {
+      selectedAnimalId = animalId;
+      switchTab('profile');
+      renderProfile();
+    }
+
+    /* ---------- Breed + Unknown + Crossbreed % Builder ---------- */
+    function buildBreedBlockHTML(prefix, label, allowUnknown = true) {
+      return `
+        <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2.5">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <span class="text-xs font-bold text-slate-700">${escapeHtml(label)}</span>
+            <div class="flex items-center gap-2">
+              ${allowUnknown ? `<label class="inline-flex items-center gap-1 text-[11px] text-slate-600 cursor-pointer"><input id="${prefix}-unknown" type="checkbox" class="rounded border-slate-300" /> Unknown</label>` : ''}
+              <select id="${prefix}-type" name="${prefix}_type" class="text-xs rounded-lg border border-slate-300 bg-white px-2 py-1">
+                <option value="Purebred">Purebred (100%)</option>
+                <option value="Crossbreed">Crossbreed (%)</option>
+              </select>
+            </div>
+          </div>
+          <div id="${prefix}-fields" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <label class="block text-[11px] font-medium text-slate-600 mb-0.5">Primary Breed</label>
+              <div class="flex gap-1.5">
+                <select id="${prefix}-b1" name="${prefix}_b1" class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"></select>
+                <input id="${prefix}-p1" name="${prefix}_p1" type="number" min="1" max="100" value="100" class="w-16 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-center" />
+              </div>
+              <input id="${prefix}-b1-custom" name="${prefix}_b1_custom" placeholder="Custom primary breed" class="hidden mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs" />
+            </div>
+            <div id="${prefix}-cross-wrap" class="hidden">
+              <label class="block text-[11px] font-medium text-slate-600 mb-0.5">Secondary Breed (%)</label>
+              <div class="flex gap-1.5">
+                <select id="${prefix}-b2" name="${prefix}_b2" class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"></select>
+                <input id="${prefix}-p2" name="${prefix}_p2" type="number" min="0" max="99" value="50" class="w-16 rounded-lg border border-slate-300 bg-white px-2 py-1.5 text-xs text-center" />
+              </div>
+              <input id="${prefix}-b2-custom" name="${prefix}_b2_custom" placeholder="Custom secondary breed" class="hidden mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs" />
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function wireBreedBlock(prefix, speciesValueOrSelect, existingInfo) {
+      const unkEl = document.getElementById(`${prefix}-unknown`);
+      const fieldsEl = document.getElementById(`${prefix}-fields`);
+      const typeEl = document.getElementById(`${prefix}-type`);
+      const b1El = document.getElementById(`${prefix}-b1`);
+      const p1El = document.getElementById(`${prefix}-p1`);
+      const b1Custom = document.getElementById(`${prefix}-b1-custom`);
+      const crossWrap = document.getElementById(`${prefix}-cross-wrap`);
+      const b2El = document.getElementById(`${prefix}-b2`);
+      const p2El = document.getElementById(`${prefix}-p2`);
+      const b2Custom = document.getElementById(`${prefix}-b2-custom`);
+
+      function getSpecies() {
+        return typeof speciesValueOrSelect === 'string' ? speciesValueOrSelect : speciesValueOrSelect.value;
+      }
+
+      function populateLists(keepExisting) {
+        const list = BREEDS_BY_SPECIES[getSpecies()] || ['Other'];
+        const opts = list.map(b => `<option value="${escapeHtml(b)}">${escapeHtml(b)}</option>`).join('');
+        b1El.innerHTML = opts;
+        b2El.innerHTML = opts;
+
+        const nb = existingInfo ? normalizeBreedInfo(existingInfo) : null;
+        if (keepExisting && nb) {
+          if (unkEl) unkEl.checked = !!nb.unknown;
+          if (!nb.unknown && nb.parts.length) {
+            typeEl.value = nb.parts.length > 1 ? 'Crossbreed' : 'Purebred';
+            const p1 = nb.parts[0];
+            if (list.includes(p1.breed)) b1El.value = p1.breed;
+            else { b1El.value = 'Other'; b1Custom.value = p1.breed; }
+            p1El.value = p1.pct;
+
+            if (nb.parts[1]) {
+              const p2 = nb.parts[1];
+              if (list.includes(p2.breed)) b2El.value = p2.breed;
+              else { b2El.value = 'Other'; b2Custom.value = p2.breed; }
+              p2El.value = p2.pct;
+            } else if (list.length > 1) {
+              b2El.value = list[1];
+            }
+          }
+        } else if (list.length > 1) {
+          b2El.value = list[1];
+        }
+        syncVisibility();
+      }
+
+      function syncVisibility() {
+        const isUnk = unkEl ? unkEl.checked : false;
+        fieldsEl.classList.toggle('hidden', isUnk);
+        typeEl.classList.toggle('hidden', isUnk);
+        if (isUnk) return;
+
+        const isCross = typeEl.value === 'Crossbreed';
+        crossWrap.classList.toggle('hidden', !isCross);
+        if (!isCross) {
+          p1El.value = 100;
+          p1El.readOnly = true;
+        } else {
+          p1El.readOnly = false;
+          if (Number(p1El.value) === 100) { p1El.value = 50; p2El.value = 50; }
+        }
+        b1Custom.classList.toggle('hidden', b1El.value !== 'Other');
+        b2Custom.classList.toggle('hidden', b2El.value !== 'Other');
+      }
+
+      p1El.addEventListener('input', () => {
+        if (typeEl.value === 'Crossbreed') {
+          const v = Math.min(99, Math.max(1, Number(p1El.value || 50)));
+          p2El.value = 100 - v;
+        }
+      });
+
+      if (unkEl) unkEl.addEventListener('change', syncVisibility);
+      typeEl.addEventListener('change', syncVisibility);
+      b1El.addEventListener('change', syncVisibility);
+      b2El.addEventListener('change', syncVisibility);
+      if (typeof speciesValueOrSelect !== 'string') {
+        speciesValueOrSelect.addEventListener('change', () => populateLists(false));
+      }
+
+      populateLists(true);
+
+      return {
+        setBreed(newInfo) {
+          existingInfo = newInfo;
+          populateLists(true);
+        }
+      };
+    }
+
+    function readBreedBlock(prefix) {
+      const unkEl = document.getElementById(`${prefix}-unknown`);
+      if (unkEl && unkEl.checked) return { unknown: true, parts: [] };
+      const type = document.getElementById(`${prefix}-type`).value;
+      const b1Raw = document.getElementById(`${prefix}-b1`).value;
+      const b1 = b1Raw === 'Other' ? (document.getElementById(`${prefix}-b1-custom`).value.trim() || 'Other') : b1Raw;
+      const p1 = Number(document.getElementById(`${prefix}-p1`).value || 100);
+      if (type !== 'Crossbreed') return { unknown: false, parts: [{ breed: b1, pct: 100 }] };
+      const b2Raw = document.getElementById(`${prefix}-b2`).value;
+      const b2 = b2Raw === 'Other' ? (document.getElementById(`${prefix}-b2-custom`).value.trim() || 'Other') : b2Raw;
+      const p2 = Number(document.getElementById(`${prefix}-p2`).value || 0);
+      return { unknown: false, parts: [{ breed: b1, pct: p1 }, { breed: b2, pct: p2 }] };
+    }
+
+    /* ---------- Photo-Guided Breed Detection Helper ---------- */
+    function buildPhotoGuideHTML() {
+      return `
+        <div class="rounded-xl border border-sky-200 bg-sky-50 p-3 space-y-2.5">
+          <div class="flex items-center justify-between">
+            <span class="text-xs font-bold text-sky-900">📸 Auto-Detect Breed from Photos (With Angle Guide)</span>
+            <button type="button" id="toggle-photo-guide" class="text-xs font-semibold text-sky-700 underline">Show / Hide Guide</button>
+          </div>
+          <div id="photo-guide-body" class="hidden space-y-3">
+            <p class="text-[11px] text-slate-600">Take or upload photos matching these 3 sample angles for best coat, ear, horn &amp; hump recognition:</p>
+            <div class="grid grid-cols-3 gap-2 text-center text-[10px] text-slate-700">
+              <div class="bg-white rounded-lg p-2 border border-sky-100">
+                <svg viewBox="0 0 120 70" class="w-full h-12 mx-auto" aria-label="Sample side profile angle">
+                  <rect x="25" y="24" width="55" height="26" rx="8" fill="#cbd5e1" stroke="#334155" stroke-width="2"/>
+                  <rect x="75" y="18" width="22" height="16" rx="4" fill="#cbd5e1" stroke="#334155" stroke-width="2"/>
+                  <path d="M35 24 Q45 14 55 24" fill="#94a3b8" stroke="#334155" stroke-width="1.5"/>
+                  <line x1="32" y1="50" x2="32" y2="65" stroke="#334155" stroke-width="2.5"/>
+                  <line x1="42" y1="50" x2="42" y2="65" stroke="#334155" stroke-width="2.5"/>
+                  <line x1="65" y1="50" x2="65" y2="65" stroke="#334155" stroke-width="2.5"/>
+                  <line x1="74" y1="50" x2="74" y2="65" stroke="#334155" stroke-width="2.5"/>
+                </svg>
+                <p class="font-semibold mt-1">1. Full Side Profile</p>
+                <p class="text-slate-400">Shows body, hump &amp; color</p>
+                <input id="photo-side" type="file" accept="image/*" class="mt-1 w-full text-[9px]" />
+              </div>
+              <div class="bg-white rounded-lg p-2 border border-sky-100">
+                <svg viewBox="0 0 100 70" class="w-full h-12 mx-auto" aria-label="Sample front head angle">
+                  <ellipse cx="50" cy="38" rx="18" ry="22" fill="#cbd5e1" stroke="#334155" stroke-width="2"/>
+                  <path d="M32 28 Q16 32 18 44" fill="none" stroke="#334155" stroke-width="2"/>
+                  <path d="M68 28 Q84 32 82 44" fill="none" stroke="#334155" stroke-width="2"/>
+                  <path d="M38 18 Q30 8 24 12" fill="none" stroke="#475569" stroke-width="2.5"/>
+                  <path d="M62 18 Q70 8 76 12" fill="none" stroke="#475569" stroke-width="2.5"/>
+                  <circle cx="42" cy="32" r="2.5" fill="#1e293b"/>
+                  <circle cx="58" cy="32" r="2.5" fill="#1e293b"/>
+                </svg>
+                <p class="font-semibold mt-1">2. Front Head &amp; Ears</p>
+                <p class="text-slate-400">Shows ear droop &amp; horns</p>
+                <input id="photo-head" type="file" accept="image/*" class="mt-1 w-full text-[9px]" />
+              </div>
+              <div class="bg-white rounded-lg p-2 border border-sky-100">
+                <svg viewBox="0 0 100 70" class="w-full h-12 mx-auto" aria-label="Sample rear udder angle">
+                  <rect x="28" y="18" width="44" height="32" rx="10" fill="#cbd5e1" stroke="#334155" stroke-width="2"/>
+                  <line x1="36" y1="50" x2="36" y2="65" stroke="#334155" stroke-width="3"/>
+                  <line x1="64" y1="50" x2="64" y2="65" stroke="#334155" stroke-width="3"/>
+                  <ellipse cx="50" cy="52" rx="9" ry="6" fill="#fda4af" stroke="#9f1239" stroke-width="1.5"/>
+                </svg>
+                <p class="font-semibold mt-1">3. Rear / Udder View</p>
+                <p class="text-slate-400">Shows frame &amp; dairy traits</p>
+                <input id="photo-rear" type="file" accept="image/*" class="mt-1 w-full text-[9px]" />
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <label class="block text-[10px] font-semibold text-slate-600 mb-0.5">Hump &amp; Dewlap</label>
+                <select id="detect-hump" class="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs">
+                  <option value="none">Flat back / No hump</option>
+                  <option value="small">Small hump</option>
+                  <option value="large">Large prominent hump</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-[10px] font-semibold text-slate-600 mb-0.5">Ear &amp; Horn Shape</label>
+                <select id="detect-ears" class="w-full rounded border border-slate-300 bg-white px-2 py-1 text-xs">
+                  <option value="short">Short / Alert ears</option>
+                  <option value="droopy">Long / Droopy ears</option>
+                </select>
+              </div>
+            </div>
+            <div class="flex items-center justify-between gap-2">
+              <button type="button" id="btn-run-breed-detect" class="px-3 py-1.5 rounded-lg bg-sky-700 hover:bg-sky-800 text-white text-xs font-semibold">Analyze Photo &amp; Traits</button>
+              <span id="detect-result" class="text-[11px] font-medium text-sky-900"></span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function wirePhotoBreedDetector(speciesSel, breedController) {
+      const toggleBtn = document.getElementById('toggle-photo-guide');
+      const body = document.getElementById('photo-guide-body');
+      const runBtn = document.getElementById('btn-run-breed-detect');
+      const resEl = document.getElementById('detect-result');
+
+      toggleBtn.addEventListener('click', () => body.classList.toggle('hidden'));
+
+      runBtn.addEventListener('click', () => {
+        const fileInput = document.getElementById('photo-side');
+        const hump = document.getElementById('detect-hump').value;
+        const ears = document.getElementById('detect-ears').value;
+        const sp = speciesSel.value;
+
+        const applySuggestion = (colorTone) => {
+          let suggestion;
+          if (sp === 'Cattle') {
+            if (colorTone === 'pied' && hump === 'none') {
+              suggestion = { unknown: false, parts: [{ breed: 'Holstein Friesian', pct: 75 }, { breed: 'Deshi', pct: 25 }] };
+            } else if (colorTone === 'red' && hump === 'large' && ears === 'droopy') {
+              suggestion = { unknown: false, parts: [{ breed: 'Sahiwal', pct: 100 }] };
+            } else if (colorTone === 'red' && hump === 'small') {
+              suggestion = { unknown: false, parts: [{ breed: 'Red Chittagong (RCC)', pct: 100 }] };
+            } else if (hump === 'small' && ears === 'short') {
+              suggestion = { unknown: false, parts: [{ breed: 'Deshi', pct: 100 }] };
+            } else {
+              suggestion = { unknown: false, parts: [{ breed: 'Holstein Friesian', pct: 50 }, { breed: 'Sahiwal', pct: 50 }] };
+            }
+          } else if (sp === 'Goat') {
+            suggestion = ears === 'droopy'
+              ? { unknown: false, parts: [{ breed: 'Jamunapari', pct: 100 }] }
+              : { unknown: false, parts: [{ breed: 'Black Bengal', pct: 100 }] };
+          } else {
+            const def = (BREEDS_BY_SPECIES[sp] && BREEDS_BY_SPECIES[sp][0]) || 'Other';
+            suggestion = { unknown: false, parts: [{ breed: def, pct: 100 }] };
+          }
+          breedController.setBreed(suggestion);
+          resEl.textContent = 'Applied: ' + formatBreed(suggestion);
+          showToast('Breed suggestion applied from photo/traits.');
+        };
+
+        if (fileInput.files && fileInput.files[0]) {
+          const img = new Image();
+          const url = URL.createObjectURL(fileInput.files[0]);
+          img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = 40; canvas.height = 40;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, 40, 40);
+            const data = ctx.getImageData(0, 0, 40, 40).data;
+            let dark = 0, bright = 0, red = 0;
+            for (let i = 0; i < data.length; i += 4) {
+              const r = data[i], g = data[i + 1], b = data[i + 2];
+              const avg = (r + g + b) / 3;
+              if (avg < 70) dark++;
+              else if (avg > 190) bright++;
+              if (r > g + 25 && r > b + 25) red++;
+            }
+            URL.revokeObjectURL(url);
+            const totalPx = 1600;
+            const tone = (dark > totalPx * 0.2 && bright > totalPx * 0.2) ? 'pied' : (red > totalPx * 0.25 ? 'red' : 'mixed');
+            applySuggestion(tone);
+          };
+          img.src = url;
+        } else {
+          applySuggestion('mixed');
+        }
+      });
+    }
+
+    /* ---------- Buy / Edit Animal Form ---------- */
+    function openAnimalForm(animalId = null) {
+      const existing = animalId ? state.animals.find(a => a.id === animalId) : null;
+      const today = new Date().toISOString().slice(0, 10);
+
+      openModal(existing ? 'Edit Animal Profile' : 'Buy New Animal (Market / Farm)', `
+        <form id="animal-form" class="space-y-3">
+          <div id="ani-form-error" class="hidden rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs px-3 py-2"></div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Animal Name <span class="text-slate-400 font-normal">(or Tag)</span></label>
+              <input id="ani-name" name="name" value="${escapeHtml(existing ? existing.name : '')}" placeholder="e.g., Lalmoni" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Tag No. <span class="text-slate-400 font-normal">(optional if named)</span></label>
+              <input id="ani-tag" name="tag" value="${escapeHtml(existing ? existing.tag : '')}" placeholder="e.g., C-105" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Species</label>
+              <select id="ani-species" name="species" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                ${['Cattle', 'Goat', 'Sheep', 'Buffalo'].map(s => `<option value="${s}" ${existing?.species === s ? 'selected' : ''}>${s}</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Purpose</label>
+              <select id="ani-purpose" name="purpose" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                <option value="Milk Production" ${existing?.purpose === 'Milk Production' ? 'selected' : ''}>Milk Production</option>
+                <option value="Meat" ${existing?.purpose === 'Meat' ? 'selected' : ''}>Meat / Fattening</option>
+                <option value="Dual" ${existing?.purpose === 'Dual' ? 'selected' : ''}>Dual-Purpose</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Sex <span id="ani-sex-lock-note" class="text-[10px] font-normal text-emerald-700"></span></label>
+              <select id="ani-sex" name="sex" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-100 disabled:cursor-not-allowed">
+                <option value="Female" ${existing?.sex === 'Female' ? 'selected' : ''}>Female</option>
+                <option value="Male" ${existing?.sex === 'Male' ? 'selected' : ''}>Male</option>
+              </select>
+            </div>
+          </div>
+
+          ${buildPhotoGuideHTML()}
+          ${buildBreedBlockHTML('animal', 'Animal Breed & Crossbreed %', true)}
+
+          <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-2">
+            <div class="flex items-center justify-between gap-2">
+              <span class="text-xs font-bold text-slate-700">Animal Coat Color</span>
+              <select id="color-type" name="color_type" class="text-xs rounded-lg border border-slate-300 bg-white px-2 py-1">
+                <option value="Single">Single Color</option>
+                <option value="Multi">Multi-Color Combination</option>
+              </select>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <div>
+                <select id="color-primary" name="color_primary" class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"></select>
+                <input id="color-primary-custom" name="color_primary_custom" placeholder="Custom primary color" class="hidden mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs" />
+              </div>
+              <div id="color-secondary-wrap" class="hidden">
+                <select id="color-secondary" name="color_secondary" class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs"></select>
+                <input id="color-secondary-custom" name="color_secondary_custom" placeholder="Custom secondary color" class="hidden mt-1.5 w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-xs" />
+              </div>
+            </div>
+            <input id="color-pattern" name="color_pattern" value="${escapeHtml(existing?.colorInfo?.pattern || '')}" placeholder="Optional markings (e.g., white forehead)" class="w-full rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-xs" />
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Origin</label>
+              <select id="ani-origin" name="origin" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm disabled:bg-slate-100" ${!existing ? 'disabled' : ''}>
+                ${existing?.origin === 'Born' ? '<option value="Born" selected>Born on Farm (Parturition)</option>' : ''}
+                <option value="Bought" ${(!existing || existing.origin === 'Bought') ? 'selected' : ''}>Bought (Market / Farm)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Date of Birth</label>
+              <input type="date" name="dob" required value="${escapeHtml(existing ? existing.dob : today)}" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Live Weight (kg)</label>
+              <input type="number" step="0.1" min="0" name="startingWeightKg" value="${existing && existing.startingWeightKg !== '' ? existing.startingWeightKg : (existing ? existing.weightKg : '')}" placeholder="e.g., 180" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+          </div>
+
+          <div id="bought-fields" class="rounded-xl border border-amber-200 bg-amber-50 p-3 grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+            <div>
+              <label class="block text-[11px] font-semibold text-amber-900 mb-1">Purchase Price (BDT)</label>
+              <input type="number" min="0" name="purchasePrice" value="${escapeHtml(existing ? existing.purchasePrice : '')}" placeholder="e.g., 145000" class="w-full rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 text-xs" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-amber-900 mb-1">Purchase Date</label>
+              <input type="date" name="purchaseDate" value="${escapeHtml(existing ? existing.purchaseDate : today)}" class="w-full rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 text-xs" />
+            </div>
+            <div>
+              <label class="block text-[11px] font-semibold text-amber-900 mb-1">Market / Farm Source</label>
+              <input name="purchaseSource" value="${escapeHtml(existing ? existing.purchaseSource : '')}" placeholder="e.g., Sutiakhali Hat" class="w-full rounded-lg border border-amber-300 bg-white px-2.5 py-1.5 text-xs" />
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Sire (Father Name / AI Bull ID)</label>
+              <input name="sireId" value="${escapeHtml(existing ? existing.sireId : '')}" placeholder="e.g., HF-7742" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Dam (Mother Name / Tag)</label>
+              <input name="damId" value="${escapeHtml(existing ? existing.damId : '')}" placeholder="e.g., RCC-18" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+          </div>
+
+          ${buildBreedBlockHTML('sire', 'Sire Breed & Crossbreed %', true)}
+
+          <div>
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Notes</label>
+            <textarea name="notes" rows="2" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Markings, lactation, remarks...">${escapeHtml(existing ? existing.notes : '')}</textarea>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-lg border border-slate-300 text-sm">Cancel</button>
+            <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold">${existing ? 'Save Changes' : 'Save Purchased Animal'}</button>
+          </div>
+        </form>
+      `);
+
+      const spSel = document.getElementById('ani-species');
+      const puSel = document.getElementById('ani-purpose');
+      const sexSel = document.getElementById('ani-sex');
+      const sexLockNote = document.getElementById('ani-sex-lock-note');
+      const orSel = document.getElementById('ani-origin');
+      const boughtFields = document.getElementById('bought-fields');
+
+      function syncPurposeSex() {
+        const lockFemale = puSel.value === 'Milk Production' || puSel.value === 'Dual';
+        if (lockFemale) { sexSel.value = 'Female'; sexSel.disabled = true; sexLockNote.textContent = '(Locked)'; }
+        else { sexSel.disabled = false; sexLockNote.textContent = ''; }
+      }
+      puSel.addEventListener('change', syncPurposeSex);
+      syncPurposeSex();
+
+      function syncOrigin() {
+        boughtFields.classList.toggle('hidden', orSel.value !== 'Bought');
+      }
+      orSel.addEventListener('change', syncOrigin);
+      syncOrigin();
+
+      const cType = document.getElementById('color-type');
+      const cPrim = document.getElementById('color-primary');
+      const cPrimCust = document.getElementById('color-primary-custom');
+      const cSecWrap = document.getElementById('color-secondary-wrap');
+      const cSec = document.getElementById('color-secondary');
+      const cSecCust = document.getElementById('color-secondary-custom');
+      const colorOpts = LIVESTOCK_COLORS.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+      cPrim.innerHTML = colorOpts; cSec.innerHTML = colorOpts; cSec.value = 'White';
+      if (existing?.colorInfo) {
+        cType.value = existing.colorInfo.type || 'Single';
+        if (LIVESTOCK_COLORS.includes(existing.colorInfo.primary)) cPrim.value = existing.colorInfo.primary;
+        else if (existing.colorInfo.primary) { cPrim.value = 'Other'; cPrimCust.value = existing.colorInfo.primary; }
+        if (existing.colorInfo.secondary) {
+          if (LIVESTOCK_COLORS.includes(existing.colorInfo.secondary)) cSec.value = existing.colorInfo.secondary;
+          else { cSec.value = 'Other'; cSecCust.value = existing.colorInfo.secondary; }
+        }
+      }
+      function syncColorUI() {
+        cSecWrap.classList.toggle('hidden', cType.value !== 'Multi');
+        cPrimCust.classList.toggle('hidden', cPrim.value !== 'Other');
+        cSecCust.classList.toggle('hidden', cSec.value !== 'Other');
+      }
+      cType.addEventListener('change', syncColorUI);
+      cPrim.addEventListener('change', syncColorUI);
+      cSec.addEventListener('change', syncColorUI);
+      syncColorUI();
+
+      const aniBreedCtrl = wireBreedBlock('animal', spSel, existing?.breedInfo);
+      wireBreedBlock('sire', spSel, existing?.sireBreedInfo);
+      wirePhotoBreedDetector(spSel, aniBreedCtrl);
+
+      document.getElementById('animal-form').addEventListener('submit', e => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const name = fd.get('name').trim();
+        const tag = fd.get('tag').trim();
+        const errEl = document.getElementById('ani-form-error');
+        if (!name && !tag) {
+          errEl.textContent = 'Please enter either an Animal Name or a Tag No.';
+          errEl.classList.remove('hidden');
+          document.getElementById('ani-name').focus();
+          return;
+        }
+        errEl.classList.add('hidden');
+
+        const origin = existing ? (existing.origin === 'Born' ? 'Born' : fd.get('origin')) : 'Bought';
+        const sw = fd.get('startingWeightKg') ? Number(fd.get('startingWeightKg')) : '';
+        const payload = {
+          id: existing ? existing.id : uid('ani'),
+          name, tag,
+          species: fd.get('species'),
+          purpose: fd.get('purpose'),
+          sex: sexSel.disabled ? 'Female' : fd.get('sex'),
+          dob: fd.get('dob'),
+          startingWeightKg: sw,
+          weightKg: (existing && state.logs.some(l => l.animalId === existing.id && l.category === 'Weight')) ? existing.weightKg : sw,
+          status: existing?.status || 'Active',
+          deathDate: existing?.deathDate || '',
+          deathCause: existing?.deathCause || '',
+          origin,
+          purchasePrice: origin === 'Bought' && fd.get('purchasePrice') ? Number(fd.get('purchasePrice')) : '',
+          purchaseDate: origin === 'Bought' ? fd.get('purchaseDate') : '',
+          purchaseSource: origin === 'Bought' ? fd.get('purchaseSource').trim() : '',
+          breedInfo: readBreedBlock('animal'),
+          sireId: fd.get('sireId').trim(),
+          sireBreedInfo: readBreedBlock('sire'),
+          damId: fd.get('damId').trim(),
+          damAnimalId: existing?.damAnimalId || '',
+          colorInfo: {
+            type: cType.value,
+            primary: cPrim.value === 'Other' ? (cPrimCust.value.trim() || 'Other') : cPrim.value,
+            secondary: cType.value === 'Multi' ? (cSec.value === 'Other' ? (cSecCust.value.trim() || 'Other') : cSec.value) : '',
+            pattern: fd.get('color_pattern').trim()
+          },
+          notes: fd.get('notes').trim()
+        };
+
+        if (existing) {
+          const idx = state.animals.findIndex(a => a.id === existing.id);
+          state.animals[idx] = payload;
+          const linkedTx = state.transactions.find(t => t.linkedAnimalId === payload.id && t.category === 'Animal Purchase');
+          if (payload.origin === 'Bought' && payload.purchasePrice) {
+            if (linkedTx) {
+              linkedTx.amount = Number(payload.purchasePrice);
+              linkedTx.date = payload.purchaseDate || linkedTx.date;
+              linkedTx.detail = `Purchased ${formatAnimalTitle(payload)}${payload.purchaseSource ? ' from ' + payload.purchaseSource : ''}`;
+            } else {
+              state.transactions.push({ id: uid('tx'), type: 'expense', date: payload.purchaseDate || today, category: 'Animal Purchase', detail: `Purchased ${formatAnimalTitle(payload)}`, qty: '1', amount: Number(payload.purchasePrice), linkedAnimalId: payload.id });
+            }
+          }
+          showToast('Animal profile updated.');
+        } else {
+          state.animals.push(payload);
+          if (payload.origin === 'Bought' && payload.purchasePrice) {
+            state.transactions.push({ id: uid('tx'), type: 'expense', date: payload.purchaseDate || today, category: 'Animal Purchase', detail: `Purchased ${formatAnimalTitle(payload)}${payload.purchaseSource ? ' from ' + payload.purchaseSource : ''}`, qty: '1', amount: Number(payload.purchasePrice), linkedAnimalId: payload.id });
+          }
+          showToast('Purchased animal added.');
+        }
+        saveState();
+        closeModal();
+        renderAll();
+      });
+    }
+
+    /* ---------- Tailored Category-Specific Record Entry Form ---------- */
+    function openLogForm(animalId, logId = null) {
+      const ani = state.animals.find(a => a.id === animalId);
+      const existing = logId ? state.logs.find(l => l.id === logId) : null;
+      const today = new Date().toISOString().slice(0, 10);
+      const initCat = existing ? existing.category : (ani.purpose === 'Milk Production' ? 'Milk Yield' : 'Vaccination');
+
+      // Find latest breeding log for Sire pre-fill in Parturition
+      const latestBreeding = state.logs
+        .filter(l => l.animalId === animalId && l.category === 'Breeding')
+        .sort((x, y) => y.date.localeCompare(x.date))[0];
+
+      const categories = ani.sex === 'Male'
+        ? ['Vaccination', 'Medication', 'Weight', 'Death', 'Adjustment']
+        : ['Vaccination', 'Medication', 'Breeding', 'Parturition', 'Miscarriage', 'Weight', 'Milk Yield', 'Death', 'Adjustment'];
+      if (existing && !categories.includes(existing.category)) categories.push(existing.category);
+
+      openModal(existing ? `Edit ${initCat} Record` : `Add Record — ${formatAnimalTitle(ani)}`, `
+        <form id="log-form" class="space-y-3">
+          <div id="log-err" class="hidden rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs px-3 py-2"></div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Date</label>
+              <input type="date" name="date" required value="${escapeHtml(existing ? existing.date : today)}" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Category</label>
+              <select id="log-cat" name="category" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" ${existing ? 'disabled' : ''}>
+                ${categories.map(c => `<option value="${c}" ${initCat === c ? 'selected' : ''}>${c}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+
+          <!-- 1. Milk Yield (ONLY 2 fields) -->
+          <div id="sec-Milk Yield" class="cat-sec hidden grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Milk Volume (Liter) *</label>
+              <input id="milk-vol" type="number" step="0.1" min="0" value="${escapeHtml(existing?.meta?.volume ?? '')}" placeholder="e.g., 7.5" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Lactation Time *</label>
+              <select id="milk-time" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                ${['Morning', 'Afternoon', 'Evening'].map(t => `<option value="${t}" ${existing?.meta?.time === t ? 'selected' : ''}>${t}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+
+          <!-- 2. Vaccination -->
+          <div id="sec-Vaccination" class="cat-sec hidden space-y-2.5">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Vaccine Name *</label>
+                <input id="vac-name" value="${escapeHtml(existing?.meta?.vaccine || '')}" placeholder="e.g., FMD, Anthrax, PPR" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Dose &amp; Route</label>
+                <input id="vac-dose" value="${escapeHtml(existing?.meta?.dose || '')}" placeholder="e.g., 2 ml SC" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Next Booster Due Date (optional)</label>
+              <input id="vac-due" type="date" value="${escapeHtml(existing?.meta?.nextDue || '')}" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+          </div>
+
+          <!-- 3. Medication -->
+          <div id="sec-Medication" class="cat-sec hidden space-y-2.5">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Medicine / Supplement *</label>
+                <input id="med-name" value="${escapeHtml(existing?.meta?.medicine || '')}" placeholder="e.g., Renasol ADE, Prycin Vet" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Dose &amp; Route</label>
+                <input id="med-dose" value="${escapeHtml(existing?.meta?.dose || '')}" placeholder="e.g., 5.5 ml IM" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Symptoms / Reason</label>
+                <input id="med-reason" value="${escapeHtml(existing?.meta?.reason || '')}" placeholder="e.g., Fever, Scours, Post-partum" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Withdrawal Period (Days)</label>
+                <input id="med-withdraw" type="number" min="0" value="${escapeHtml(existing?.meta?.withdrawal ?? '')}" placeholder="e.g., 7" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+            </div>
+          </div>
+
+          <!-- 4. Breeding (with Repeat Breeding & Sire Breed %) -->
+          <div id="sec-Breeding" class="cat-sec hidden space-y-2.5">
+            <div class="grid grid-cols-3 gap-2.5">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Method</label>
+                <select id="br-method" class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm">
+                  <option value="AI" ${existing?.meta?.method === 'AI' ? 'selected' : ''}>AI (Insemination)</option>
+                  <option value="Natural" ${existing?.meta?.method === 'Natural' ? 'selected' : ''}>Natural Service</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Service No.</label>
+                <input id="br-svc-no" type="number" min="1" value="${escapeHtml(existing?.meta?.serviceNo || 1)}" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+              <div class="flex items-end pb-2">
+                <label class="inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800 cursor-pointer">
+                  <input id="br-repeat" type="checkbox" ${existing?.meta?.repeat ? 'checked' : ''} class="rounded border-slate-300" />
+                  Repeat Breeding
+                </label>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Sire / AI Bull ID *</label>
+              <input id="br-sire" value="${escapeHtml(existing?.meta?.sireId || '')}" placeholder="e.g., Sahiwal-204" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+            ${buildBreedBlockHTML('brsire', 'Sire Breed & Crossbreed %', true)}
+          </div>
+
+          <!-- 5. Parturition (Adds Newborn to Herd + Auto-calculates Breed % from Dam & Sire) -->
+          <div id="sec-Parturition" class="cat-sec hidden space-y-2.5">
+            <div class="rounded-lg bg-sky-50 border border-sky-200 p-2.5 text-xs text-sky-900">
+              <p><strong>Dam (Mother):</strong> ${escapeHtml(formatAnimalTitle(ani))} — ${escapeHtml(formatBreed(ani.breedInfo))}</p>
+              <p><strong>Sire from Latest Breeding:</strong> ${latestBreeding ? escapeHtml((latestBreeding.meta?.sireId || 'AI Sire') + ' (' + formatBreed(latestBreeding.meta?.sireBreedInfo) + ')') : 'No breeding log found (set below or mark unknown)'}</p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Calf / Kid Name (or Tag)</label>
+                <input id="pt-name" placeholder="e.g., Shona" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Tag No. (optional)</label>
+                <input id="pt-tag" placeholder="e.g., C-110" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+            </div>
+            <div class="grid grid-cols-3 gap-2.5">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Purpose</label>
+                <select id="pt-purpose" class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm">
+                  <option value="Milk Production">Milk Production</option>
+                  <option value="Meat">Meat / Fattening</option>
+                  <option value="Dual">Dual-Purpose</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Gender <span id="pt-sex-note" class="text-[10px] text-emerald-700"></span></label>
+                <select id="pt-sex" class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm disabled:bg-slate-100">
+                  <option value="Female">Female</option>
+                  <option value="Male">Male</option>
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Calf Weight (kg) *</label>
+                <input id="pt-weight" type="number" step="0.1" min="0" placeholder="e.g., 24" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2.5">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Coat Color</label>
+                <select id="pt-color1" class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm">
+                  ${LIVESTOCK_COLORS.filter(c => c !== 'Other').map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}
+                </select>
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Secondary Color (optional)</label>
+                <select id="pt-color2" class="w-full rounded-lg border border-slate-300 px-2.5 py-2 text-sm">
+                  <option value="">Single Color Only</option>
+                  ${LIVESTOCK_COLORS.filter(c => c !== 'Other').map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+            <div class="flex flex-wrap gap-3 text-xs text-slate-700">
+              <label class="inline-flex items-center gap-1.5 cursor-pointer"><input id="pt-unk-dam" type="checkbox" ${ani.breedInfo?.unknown ? 'checked' : ''} /> Dam breed unknown</label>
+              <label class="inline-flex items-center gap-1.5 cursor-pointer"><input id="pt-unk-sire" type="checkbox" ${!latestBreeding || latestBreeding.meta?.sireBreedInfo?.unknown ? 'checked' : ''} /> Sire breed unknown</label>
+            </div>
+            <div id="pt-breed-preview" class="text-xs font-semibold text-emerald-800 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2"></div>
+          </div>
+
+          <!-- 6. Miscarriage -->
+          <div id="sec-Miscarriage" class="cat-sec hidden space-y-2.5">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Pregnancy Stage (Months/Days)</label>
+                <input id="misc-stage" value="${escapeHtml(existing?.meta?.stage || '')}" placeholder="e.g., 5 months" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Probable Cause *</label>
+                <input id="misc-cause" value="${escapeHtml(existing?.meta?.cause || '')}" placeholder="e.g., Fever, Trauma, Infection" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+            </div>
+          </div>
+
+          <!-- 7. Weight -->
+          <div id="sec-Weight" class="cat-sec hidden grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Live Weight (kg) *</label>
+              <input id="wt-val" type="number" step="0.1" min="0" value="${escapeHtml(existing?.meta?.weight ?? '')}" placeholder="e.g., 392" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Method</label>
+              <select id="wt-method" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                <option value="Scale" ${existing?.meta?.method === 'Scale' ? 'selected' : ''}>Digital / Platform Scale</option>
+                <option value="Tape" ${existing?.meta?.method === 'Tape' ? 'selected' : ''}>Heart-Girth Tape</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- 8. Death -->
+          <div id="sec-Death" class="cat-sec hidden space-y-2.5">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Cause of Death *</label>
+              <input id="dth-cause" value="${escapeHtml(existing?.meta?.cause || '')}" placeholder="e.g., Bloat, Pneumonia, Accident" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Notes</label>
+              <input id="dth-note" value="${escapeHtml(existing?.meta?.note || '')}" placeholder="Post-mortem or vet remarks" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+          </div>
+
+          <!-- 9. Adjustment -->
+          <div id="sec-Adjustment" class="cat-sec hidden space-y-2.5">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Adjustment / Correction Note *</label>
+              <input id="adj-note" value="${escapeHtml(existing ? existing.detail : '')}" placeholder="Describe correction..." class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+          </div>
+
+          <!-- Purchase / Service Cost (Synced to Finance Expense) -->
+          <div id="log-cost-wrap" class="hidden rounded-xl border border-rose-200 bg-rose-50/60 p-3">
+            <label class="block text-xs font-semibold text-rose-900 mb-1">Purchase / Service Cost (BDT) * <span class="font-normal text-rose-700">(Auto-added to Finance Expenses; enter 0 if free/from stock)</span></label>
+            <input id="log-cost" type="number" step="0.01" min="0" value="${existing?.meta?.cost !== undefined ? existing.meta.cost : ''}" placeholder="e.g., 350" class="w-full rounded-lg border border-rose-300 bg-white px-3 py-2 text-sm" />
+          </div>
+
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-lg border border-slate-300 text-sm">Cancel</button>
+            <button type="submit" class="px-4 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold">${existing ? 'Save Correction' : 'Save Record'}</button>
+          </div>
+        </form>
+      `);
+
+      const catSel = document.getElementById('log-cat');
+      const brSireCtrl = wireBreedBlock('brsire', ani.species, existing?.meta?.sireBreedInfo);
+
+      const ptPurpose = document.getElementById('pt-purpose');
+      const ptSex = document.getElementById('pt-sex');
+      const ptSexNote = document.getElementById('pt-sex-note');
+      const ptUnkDam = document.getElementById('pt-unk-dam');
+      const ptUnkSire = document.getElementById('pt-unk-sire');
+      const ptPreview = document.getElementById('pt-breed-preview');
+
+      function syncPtSex() {
+        const lock = ptPurpose.value === 'Milk Production' || ptPurpose.value === 'Dual';
+        if (lock) { ptSex.value = 'Female'; ptSex.disabled = true; ptSexNote.textContent = '(Locked)'; }
+        else { ptSex.disabled = false; ptSexNote.textContent = ''; }
+      }
+      function updatePtBreedPreview() {
+        const dBreed = ptUnkDam.checked ? { unknown: true, parts: [] } : ani.breedInfo;
+        const sBreed = ptUnkSire.checked ? { unknown: true, parts: [] } : (latestBreeding?.meta?.sireBreedInfo || { unknown: true, parts: [] });
+        const calc = combineParentBreeds(dBreed, sBreed);
+        ptPreview.textContent = 'Calculated Offspring Breed: ' + formatBreed(calc);
+      }
+      ptPurpose.addEventListener('change', syncPtSex);
+      ptUnkDam.addEventListener('change', updatePtBreedPreview);
+      ptUnkSire.addEventListener('change', updatePtBreedPreview);
+      syncPtSex();
+      updatePtBreedPreview();
+
+      const costWrap = document.getElementById('log-cost-wrap');
+      const costIn = document.getElementById('log-cost');
+      const COST_CATEGORIES = ['Vaccination', 'Medication', 'Breeding', 'Adjustment'];
+
+      function syncCatSection() {
+        const cur = catSel.value;
+        document.querySelectorAll('.cat-sec').forEach(el => el.classList.add('hidden'));
+        const activeSec = document.getElementById('sec-' + cur);
+        if (activeSec) activeSec.classList.remove('hidden');
+        const needsCost = COST_CATEGORIES.includes(cur);
+        costWrap.classList.toggle('hidden', !needsCost);
+      }
+      catSel.addEventListener('change', syncCatSection);
+      syncCatSection();
+
+      document.getElementById('log-form').addEventListener('submit', e => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const cat = existing ? existing.category : catSel.value;
+        const logDate = fd.get('date');
+        const errEl = document.getElementById('log-err');
+        errEl.classList.add('hidden');
+
+        let detail = '';
+        let val = '';
+        let meta = {};
+
+        if (cat === 'Milk Yield') {
+          const vol = document.getElementById('milk-vol').value;
+          const time = document.getElementById('milk-time').value;
+          if (!vol) { errEl.textContent = 'Please enter Milk Volume (Liter).'; errEl.classList.remove('hidden'); return; }
+          detail = `${time} milking`;
+          val = `${vol} L`;
+          meta = { volume: Number(vol), time };
+        } else if (cat === 'Vaccination') {
+          const vac = document.getElementById('vac-name').value.trim();
+          const dose = document.getElementById('vac-dose').value.trim();
+          const nextDue = document.getElementById('vac-due').value;
+          if (!vac) { errEl.textContent = 'Please enter Vaccine Name.'; errEl.classList.remove('hidden'); return; }
+          detail = `${vac}${dose ? ' (' + dose + ')' : ''}${nextDue ? ' • Next due: ' + nextDue : ''}`;
+          meta = { vaccine: vac, dose, nextDue };
+        } else if (cat === 'Medication') {
+          const med = document.getElementById('med-name').value.trim();
+          const dose = document.getElementById('med-dose').value.trim();
+          const reason = document.getElementById('med-reason').value.trim();
+          const wd = document.getElementById('med-withdraw').value;
+          if (!med) { errEl.textContent = 'Please enter Medicine / Supplement Name.'; errEl.classList.remove('hidden'); return; }
+          detail = `${med}${dose ? ' (' + dose + ')' : ''}${reason ? ' — ' + reason : ''}${wd ? ' [Withdrawal: ' + wd + 'd]' : ''}`;
+          meta = { medicine: med, dose, reason, withdrawal: wd };
+        } else if (cat === 'Breeding') {
+          const method = document.getElementById('br-method').value;
+          const svcNo = Number(document.getElementById('br-svc-no').value || 1);
+          const repeat = document.getElementById('br-repeat').checked;
+          const sireId = document.getElementById('br-sire').value.trim();
+          const sireBreedInfo = readBreedBlock('brsire');
+          if (!sireId) { errEl.textContent = 'Please enter Sire / AI Bull ID.'; errEl.classList.remove('hidden'); return; }
+          detail = `${method} with ${sireId} (${formatBreed(sireBreedInfo)}) — Service #${svcNo}${repeat ? ' [Repeat Breeding]' : ''}`;
+          meta = { method, serviceNo: svcNo, repeat, sireId, sireBreedInfo };
+        } else if (cat === 'Parturition') {
+          const cName = document.getElementById('pt-name').value.trim();
+          const cTag = document.getElementById('pt-tag').value.trim();
+          const cWeight = document.getElementById('pt-weight').value;
+          if (!cName && !cTag) { errEl.textContent = 'Please enter Calf/Kid Name or Tag No.'; errEl.classList.remove('hidden'); return; }
+          if (!cWeight) { errEl.textContent = 'Please enter Calf/Kid Weight (kg).'; errEl.classList.remove('hidden'); return; }
+          const dBreed = ptUnkDam.checked ? { unknown: true, parts: [] } : ani.breedInfo;
+          const sBreed = ptUnkSire.checked ? { unknown: true, parts: [] } : (latestBreeding?.meta?.sireBreedInfo || { unknown: true, parts: [] });
+          const calcBreed = combineParentBreeds(dBreed, sBreed);
+          const c1 = document.getElementById('pt-color1').value;
+          const c2 = document.getElementById('pt-color2').value;
+          const newborn = {
+            id: uid('ani'),
+            name: cName,
+            tag: cTag,
+            species: ani.species,
+            purpose: ptPurpose.value,
+            sex: ptSex.disabled ? 'Female' : ptSex.value,
+            dob: logDate,
+            startingWeightKg: Number(cWeight),
+            weightKg: Number(cWeight),
+            status: 'Active',
+            origin: 'Born',
+            purchasePrice: '', purchaseDate: '', purchaseSource: '',
+            breedInfo: calcBreed,
+            sireId: latestBreeding?.meta?.sireId || 'Unknown',
+            sireBreedInfo: sBreed,
+            damId: formatAnimalTitle(ani),
+            damAnimalId: ani.id,
+            colorInfo: { type: c2 ? 'Multi' : 'Single', primary: c1, secondary: c2, pattern: '' },
+            notes: `Born from ${formatAnimalTitle(ani)}`
+          };
+          if (!existing) state.animals.push(newborn);
+          detail = `Gave birth to ${formatAnimalTitle(newborn)} (${newborn.sex}, ${formatBreed(calcBreed)})`;
+          val = `${cWeight} kg`;
+          meta = { newbornId: newborn.id };
+        } else if (cat === 'Miscarriage') {
+          const stage = document.getElementById('misc-stage').value.trim();
+          const cause = document.getElementById('misc-cause').value.trim();
+          if (!cause) { errEl.textContent = 'Please enter Probable Cause.'; errEl.classList.remove('hidden'); return; }
+          detail = `Miscarriage${stage ? ' at ' + stage : ''} — Cause: ${cause}`;
+          meta = { stage, cause };
+        } else if (cat === 'Weight') {
+          const wt = document.getElementById('wt-val').value;
+          const method = document.getElementById('wt-method').value;
+          if (!wt) { errEl.textContent = 'Please enter Live Weight (kg).'; errEl.classList.remove('hidden'); return; }
+          ani.weightKg = Number(wt);
+          detail = `${method} measurement`;
+          val = `${wt} kg`;
+          meta = { weight: Number(wt), method };
+        } else if (cat === 'Death') {
+          const cause = document.getElementById('dth-cause').value.trim();
+          const note = document.getElementById('dth-note').value.trim();
+          if (!cause) { errEl.textContent = 'Please enter Cause of Death.'; errEl.classList.remove('hidden'); return; }
+          ani.status = 'Deceased';
+          ani.deathDate = logDate;
+          ani.deathCause = cause;
+          detail = `Cause: ${cause}${note ? ' — ' + note : ''}`;
+          meta = { cause, note };
+        } else if (cat === 'Adjustment') {
+          const adj = document.getElementById('adj-note').value.trim();
+          if (!adj) { errEl.textContent = 'Please enter Adjustment Note.'; errEl.classList.remove('hidden'); return; }
+          detail = adj;
+        }
+
+        let costVal = 0;
+        if (COST_CATEGORIES.includes(cat)) {
+          const rawCost = costIn.value;
+          if (rawCost === '' || isNaN(Number(rawCost)) || Number(rawCost) < 0) {
+            errEl.textContent = 'Please enter the Purchase / Service Cost in BDT (enter 0 if from existing stock).';
+            errEl.classList.remove('hidden');
+            return;
+          }
+          costVal = Number(rawCost);
+          meta.cost = costVal;
+        }
+
+        let savedLogId = existing ? existing.id : uid('log');
+        if (existing) {
+          existing.date = logDate;
+          existing.detail = detail;
+          existing.value = val;
+          existing.meta = meta;
+          showToast('Record updated.');
+        } else {
+          state.logs.push({ id: savedLogId, animalId, date: logDate, category: cat, detail, value: val, meta });
+          showToast(cat === 'Parturition' ? 'Parturition logged & newborn added to herd.' : 'Record saved.');
+        }
+
+        // Sync purchase/service cost to Finance Expenses
+        if (COST_CATEGORIES.includes(cat)) {
+          const expCat = (cat === 'Vaccination' || cat === 'Medication')
+            ? 'Medicine'
+            : (cat === 'Breeding' ? 'Vet Fees' : 'Other');
+          const expDetail = `${formatAnimalTitle(ani)} — ${cat}: ${detail}`;
+          const linkedTxIdx = state.transactions.findIndex(t => t.linkedLogId === savedLogId);
+          if (costVal > 0) {
+            const txObj = {
+              id: linkedTxIdx >= 0 ? state.transactions[linkedTxIdx].id : uid('tx'),
+              type: 'expense',
+              date: logDate,
+              category: expCat,
+              detail: expDetail,
+              qty: '1',
+              amount: costVal,
+              linkedAnimalId: animalId,
+              linkedLogId: savedLogId
+            };
+            if (linkedTxIdx >= 0) state.transactions[linkedTxIdx] = txObj;
+            else state.transactions.push(txObj);
+          } else if (linkedTxIdx >= 0) {
+            state.transactions.splice(linkedTxIdx, 1);
+          }
+        }
+        saveState();
+        closeModal();
+        renderAll();
+      });
+    }
+
+    /* ---------- Finance Form ---------- */
+    function openTransactionForm(type = 'expense', txId = null) {
+      const existing = txId ? state.transactions.find(t => t.id === txId) : null;
+      const txType = existing ? existing.type : type;
+      const cats = txType === 'income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+      const today = new Date().toISOString().slice(0, 10);
+      const isCustomCat = existing && !cats.includes(existing.category);
+      const initCat = existing ? (isCustomCat ? 'Other' : existing.category) : cats[0];
+
+      const parsedLiters = existing?.meta?.liters ?? (existing?.qty ? parseFloat(existing.qty) : '');
+      const parsedRate = existing?.meta?.rate ?? (parsedLiters && existing?.amount ? Math.round((existing.amount / parsedLiters) * 100) / 100 : '');
+
+      const sellableAnimals = state.animals.filter(a =>
+        ((a.status || 'Active') === 'Active') || (existing && existing.linkedAnimalId === a.id)
+      );
+
+      openModal(existing ? `Edit ${txType === 'income' ? 'Income' : 'Expense'}` : (txType === 'income' ? 'Record Income / Sale' : 'Record Purchase / Expense'), `
+        <form id="tx-form" class="space-y-3">
+          <div id="tx-err" class="hidden rounded-lg bg-rose-50 border border-rose-200 text-rose-700 text-xs px-3 py-2"></div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Date</label>
+              <input type="date" name="date" required value="${escapeHtml(existing ? existing.date : today)}" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Category</label>
+              <select id="tx-cat" name="category" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                ${cats.map(c => `<option value="${escapeHtml(c)}" ${initCat === c ? 'selected' : ''}>${escapeHtml(txType === 'expense' ? formatTxCategory(c) : c)}</option>`).join('')}
+              </select>
+            </div>
+          </div>
+
+          <div id="tx-custom-cat-wrap" class="${isCustomCat ? '' : 'hidden'}">
+            <label class="block text-xs font-semibold text-slate-700 mb-1">Custom Category Name *</label>
+            <input id="tx-custom-cat" name="customCategory" value="${escapeHtml(isCustomCat ? existing.category : '')}" placeholder="Enter custom category..." class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+          </div>
+
+          <!-- Milk Sales Specific Fields -->
+          <div id="tx-milk-fields" class="hidden space-y-2.5">
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Amount of Milk (Liter) *</label>
+                <input id="tx-milk-liters" type="number" step="0.1" min="0" value="${!isNaN(parsedLiters) && parsedLiters !== '' ? parsedLiters : ''}" placeholder="e.g., 14.5" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Rate per Liter (BDT) *</label>
+                <input id="tx-milk-rate" type="number" step="0.1" min="0" value="${!isNaN(parsedRate) && parsedRate !== '' ? parsedRate : ''}" placeholder="e.g., 80" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+            </div>
+            <div class="rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-900">
+              Total Milk Sale: <span id="tx-milk-total">৳0</span>
+            </div>
+          </div>
+
+          <!-- Animal Sales Specific Fields -->
+          <div id="tx-animal-sale-fields" class="hidden grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Select Animal *</label>
+              <select id="tx-sale-animal" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm">
+                <option value="">-- Choose Animal --</option>
+                ${sellableAnimals.map(a => `<option value="${a.id}" ${existing?.linkedAnimalId === a.id ? 'selected' : ''}>${escapeHtml(formatAnimalTitle(a))} (${escapeHtml(a.species)})</option>`).join('')}
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Sale Price (BDT) *</label>
+              <input id="tx-sale-price" type="number" step="1" min="0" value="${existing && initCat === 'Animal Sales' ? existing.amount : ''}" placeholder="e.g., 165000" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+          </div>
+
+          <!-- Standard Fields (for Expenses & Other Income) -->
+          <div id="tx-std-fields" class="space-y-3">
+            <div>
+              <label class="block text-xs font-semibold text-slate-700 mb-1">Item / Description <span class="text-slate-400 font-normal">(optional)</span></label>
+              <input id="tx-detail" name="detail" value="${escapeHtml(existing ? existing.detail : '')}" placeholder="${txType === 'income' ? 'e.g., 10 sacks composted dung' : 'e.g., 5 bags wheat bran'}" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+            <div class="grid grid-cols-3 gap-3">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Quantity</label>
+                <input id="tx-qty" name="qty" value="${escapeHtml(existing ? existing.qty : '')}" placeholder="e.g., 50 kg" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Total Amount (BDT) *</label>
+                <input id="tx-amount" type="number" step="0.01" min="0" name="amount" value="${existing ? existing.amount : ''}" placeholder="e.g., 2500" class="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Link Animal</label>
+                <select id="tx-link-ani" name="linkedAnimalId" class="w-full rounded-lg border border-slate-300 px-2 py-2 text-sm">
+                  <option value="">Farm-wide</option>
+                  ${state.animals.map(a => `<option value="${a.id}" ${existing?.linkedAnimalId === a.id ? 'selected' : ''}>${escapeHtml(formatAnimalTitle(a))}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="flex justify-end gap-2 pt-2">
+            <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-lg border border-slate-300 text-sm">Cancel</button>
+            <button type="submit" class="px-4 py-2 rounded-lg ${txType === 'income' ? 'bg-emerald-700 hover:bg-emerald-800' : 'bg-rose-600 hover:bg-rose-700'} text-white text-sm font-semibold">${existing ? 'Save Correction' : 'Save Entry'}</button>
+          </div>
+        </form>
+      `);
+
+      const catSel = document.getElementById('tx-cat');
+      const customWrap = document.getElementById('tx-custom-cat-wrap');
+      const customInput = document.getElementById('tx-custom-cat');
+      const milkWrap = document.getElementById('tx-milk-fields');
+      const animalSaleWrap = document.getElementById('tx-animal-sale-fields');
+      const stdWrap = document.getElementById('tx-std-fields');
+      const litersIn = document.getElementById('tx-milk-liters');
+      const rateIn = document.getElementById('tx-milk-rate');
+      const milkTotalEl = document.getElementById('tx-milk-total');
+
+      function updateMilkTotal() {
+        const l = parseFloat(litersIn.value || 0);
+        const r = parseFloat(rateIn.value || 0);
+        milkTotalEl.textContent = '৳' + Math.round(l * r).toLocaleString();
+      }
+      litersIn.addEventListener('input', updateMilkTotal);
+      rateIn.addEventListener('input', updateMilkTotal);
+      updateMilkTotal();
+
+      function syncTxMode() {
+        const c = catSel.value;
+        const isOther = c === 'Other';
+        const isMilkSale = txType === 'income' && c === 'Milk Sales';
+        const isAnimalSale = txType === 'income' && c === 'Animal Sales';
+        const isStd = !isMilkSale && !isAnimalSale;
+
+        customWrap.classList.toggle('hidden', !isOther);
+        customInput.required = isOther;
+        milkWrap.classList.toggle('hidden', !isMilkSale);
+        animalSaleWrap.classList.toggle('hidden', !isAnimalSale);
+        stdWrap.classList.toggle('hidden', !isStd);
+      }
+      catSel.addEventListener('change', syncTxMode);
+      syncTxMode();
+
+      document.getElementById('tx-form').addEventListener('submit', e => {
+        e.preventDefault();
+        const fd = new FormData(e.target);
+        const rawCat = fd.get('category');
+        const finalCat = rawCat === 'Other' ? (fd.get('customCategory').trim() || 'Other') : rawCat;
+        const errEl = document.getElementById('tx-err');
+        errEl.classList.add('hidden');
+
+        let detail = '';
+        let qty = '';
+        let amount = 0;
+        let linkedAnimalId = '';
+        let meta = {};
+
+        if (txType === 'income' && rawCat === 'Milk Sales') {
+          const liters = parseFloat(litersIn.value);
+          const rate = parseFloat(rateIn.value);
+          if (!liters || liters <= 0 || isNaN(rate) || rate < 0) {
+            errEl.textContent = 'Please enter Amount of Milk (Liter) and Rate per Liter.';
+            errEl.classList.remove('hidden');
+            return;
+          }
+          qty = `${liters} L`;
+          amount = Math.round(liters * rate * 100) / 100;
+          detail = `Milk sold (${liters} L @ ৳${rate}/L)`;
+          meta = { liters, rate };
+        } else if (txType === 'income' && rawCat === 'Animal Sales') {
+          const aniId = document.getElementById('tx-sale-animal').value;
+          const price = parseFloat(document.getElementById('tx-sale-price').value);
+          if (!aniId || isNaN(price) || price < 0) {
+            errEl.textContent = 'Please select an Animal and enter the Sale Price.';
+            errEl.classList.remove('hidden');
+            return;
+          }
+          const ani = state.animals.find(a => a.id === aniId);
+          linkedAnimalId = aniId;
+          qty = '1';
+          amount = price;
+          detail = `Sold ${ani ? formatAnimalTitle(ani) : 'Animal'}`;
+          if (ani) ani.status = 'Sold';
+        } else {
+          const rawDetail = document.getElementById('tx-detail').value.trim();
+          detail = rawDetail || finalCat;
+          qty = document.getElementById('tx-qty').value.trim();
+          const rawAmt = document.getElementById('tx-amount').value;
+          amount = Number(rawAmt);
+          linkedAnimalId = document.getElementById('tx-link-ani').value;
+          if (rawAmt === '' || isNaN(amount) || amount < 0) {
+            errEl.textContent = 'Please enter a valid Total Amount (BDT).';
+            errEl.classList.remove('hidden');
+            return;
+          }
+        }
+
+        const payload = {
+          id: existing ? existing.id : uid('tx'),
+          type: txType,
+          date: fd.get('date'),
+          category: finalCat,
+          detail,
+          qty,
+          amount,
+          linkedAnimalId,
+          meta
+        };
+        if (existing) {
+          const idx = state.transactions.findIndex(t => t.id === existing.id);
+          state.transactions[idx] = payload;
+          showToast('Financial entry updated.');
+        } else {
+          state.transactions.push(payload);
+          showToast(txType === 'income' ? 'Income recorded.' : 'Expense recorded.');
+        }
+        saveState();
+        closeModal();
+        renderAll();
+      });
+    }
+
+    function openConfirmDelete(message, onConfirm) {
+      openModal('Confirm Deletion', `
+        <p class="text-sm text-slate-700">${escapeHtml(message)}</p>
+        <div class="flex justify-end gap-2 pt-3">
+          <button type="button" onclick="closeModal()" class="px-4 py-2 rounded-lg border border-slate-300 text-sm">Cancel</button>
+          <button id="confirm-del-btn" type="button" class="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold">Delete</button>
+        </div>
+      `);
+      document.getElementById('confirm-del-btn').addEventListener('click', () => {
+        onConfirm();
+        closeModal();
+      });
+    }
+
+    /* ---------- PDF Exports ---------- */
+    function exportAnimalPDF(animalId) {
+      if (!window.jspdf) { showToast('PDF library still loading — please try again.'); return; }
+      const a = state.animals.find(x => x.id === animalId);
+      const logs = state.logs.filter(l => l.animalId === animalId).sort((x, y) => y.date.localeCompare(x.date));
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.setFontSize(16);
+      doc.setTextColor(6, 78, 59);
+      doc.text(`Livestock Animal Profile — ${formatAnimalTitle(a)}`, 14, 18);
+      doc.setFontSize(10);
+      doc.setTextColor(71, 85, 105);
+      doc.text(`Generated: ${new Date().toISOString().slice(0, 10)} | Rakhal — Livestock Farm Manager`, 14, 25);
+
+      const originText = a.origin === 'Bought'
+        ? `Bought (${a.purchaseDate || 'N/A'})${a.purchasePrice ? ' — BDT ' + Number(a.purchasePrice).toLocaleString() : ''}${a.purchaseSource ? ' | ' + a.purchaseSource : ''}`
+        : 'Born on Farm';
+
+      doc.autoTable({
+        startY: 30,
+        head: [['Profile Field', 'Details']],
+        body: [
+          ['Name / Tag No.', `${a.name || '—'} / ${a.tag || 'No Tag'}`],
+          ['Species & Purpose', `${a.species} (${a.purpose})`],
+          ['Breed Composition', formatBreed(a.breedInfo)],
+          ['Coat Color', formatColor(a.colorInfo)],
+          ['Sex & Age (DOB)', `${a.sex} • ${calcAgeText(a.dob)} (DOB: ${a.dob})`],
+          ['Starting / Current Weight', `Start: ${a.startingWeightKg ? a.startingWeightKg + ' kg' : 'N/A'} | Current: ${a.weightKg ? a.weightKg + ' kg' : 'N/A'}`],
+          ['Origin & Price', originText],
+          ['Sire (Father)', `${a.sireId || 'Unknown'} — ${formatBreed(a.sireBreedInfo)}`],
+          ['Dam (Mother)', a.damId || 'Unknown'],
+          ['Status', a.status === 'Deceased' ? `Deceased (${a.deathDate}: ${a.deathCause})` : 'Active'],
+          ['Notes', a.notes || '—']
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [6, 78, 59] }
+      });
+
+      const historyRows = logs.map(l => [l.date, l.category, l.detail, l.value || '—']);
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 8,
+        head: [['Date', 'Category', 'Details', 'Value']],
+        body: historyRows.length ? historyRows : [['—', 'No records yet', '', '']],
+        theme: 'striped',
+        headStyles: { fillColor: [30, 41, 59] }
+      });
+
+      doc.save(`Livestock_${formatAnimalTitle(a).replace(/[^a-z0-9]+/gi, '_')}_Profile.pdf`);
+      showToast('Animal PDF exported.');
+    }
+
+    function exportFinancePDF() {
+      if (!window.jspdf) { showToast('PDF library still loading — please try again.'); return; }
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      const totalIncome = state.transactions.filter(t => t.type === 'income').reduce((sum, t) => sum + Number(t.amount || 0), 0);
+      const opExpense = state.transactions.filter(t => t.type === 'expense' && t.category !== 'Animal Purchase').reduce((sum, t) => sum + Number(t.amount || 0), 0);
+      const capitalInvest = state.transactions.filter(t => t.type === 'expense' && t.category === 'Animal Purchase').reduce((sum, t) => sum + Number(t.amount || 0), 0);
+      const net = totalIncome - opExpense;
+
+      doc.setFontSize(16);
+      doc.setTextColor(6, 78, 59);
+      doc.text('Rakhal — Livestock Farm Financial Report', 14, 18);
+      doc.setFontSize(10);
+      doc.setTextColor(71, 85, 105);
+      doc.text(`Generated: ${new Date().toISOString().slice(0, 10)} | Currency: BDT`, 14, 25);
+
+      doc.autoTable({
+        startY: 30,
+        head: [['Summary Metric', 'Amount (BDT)']],
+        body: [
+          ['Total Income', totalIncome.toLocaleString()],
+          ['Operating Expenses (Excl. Animal Purchase)', opExpense.toLocaleString()],
+          ['Operating Profit / Loss', (net >= 0 ? '' : '-') + Math.abs(net).toLocaleString()],
+          ['Capital Investment (Animal Purchases)', capitalInvest.toLocaleString()]
+        ],
+        theme: 'grid',
+        headStyles: { fillColor: [6, 78, 59] }
+      });
+
+      const txRows = [...state.transactions].sort((a, b) => b.date.localeCompare(a.date)).map(t => [
+        t.date, t.type === 'income' ? 'Income' : (t.category === 'Animal Purchase' ? 'Capital Asset' : 'Expense'),
+        t.category, t.detail + (t.qty ? ' (' + t.qty + ')' : ''),
+        (t.type === 'income' ? '+' : '-') + Number(t.amount || 0).toLocaleString()
+      ]);
+
+      doc.autoTable({
+        startY: doc.lastAutoTable.finalY + 8,
+        head: [['Date', 'Type', 'Category', 'Description', 'Amount (BDT)']],
+        body: txRows.length ? txRows : [['—', '—', 'No transactions', '', '0']],
+        theme: 'striped',
+        headStyles: { fillColor: [30, 41, 59] }
+      });
+
+      doc.save(`Livestock_Finance_Report_${new Date().toISOString().slice(0, 10)}.pdf`);
+      showToast('Finance PDF exported.');
+    }
+
+    /* ---------- Disease Management ---------- */
+    const DISEASE_SIGNS = [
+      { id: 'anorexia', label: 'Anorexia (Loss of appetite)' },
+      { id: 'dull_coat', label: 'Dull / Rough Coat' },
+      { id: 'indigestion', label: 'Indigestion / Undigested Dung' },
+      { id: 'bloat', label: 'Bloat (Swollen left flank)' },
+      { id: 'stunted', label: 'Stunted Growth / Poor Gain' },
+      { id: 'milk_drop', label: 'Milk Production Decline' },
+      { id: 'hesitate_stand', label: 'Hesitated Standing Up / Weakness' },
+      { id: 'skin_lumps', label: 'Skin Lumps / Nodules (LSD)' },
+      { id: 'hoof_mouth', label: 'Hoof / Mouth Blisters (FMD)' },
+      { id: 'goosebumps', label: 'Goosebumps / Fever / Shivering' },
+      { id: 'diarrhea', label: 'Diarrhea / Watery Dung' }
+    ];
+
+    function initDiseaseUI() {
+      const grid = document.getElementById('dis-signs-grid');
+      grid.innerHTML = DISEASE_SIGNS.map(sg => `
+        <label class="flex items-center gap-2 p-2 rounded-lg border border-slate-200 hover:bg-slate-50 cursor-pointer">
+          <input type="checkbox" value="${sg.id}" class="dis-sign-cb rounded border-slate-300 text-emerald-700" />
+          <span class="text-slate-700">${escapeHtml(sg.label)}</span>
+        </label>
+      `).join('');
+
+      ['skin', 'hoof', 'dung', 'body'].forEach(slot => {
+        document.getElementById('dis-photo-' + slot).addEventListener('change', renderDiseasePhotoPreviews);
+      });
+    }
+
+    function renderDiseaseAnimalDropdown() {
+      const sel = document.getElementById('dis-animal-select');
+      if (!sel) return;
+      const prev = sel.value;
+      const active = state.animals.filter(a => (a.status || 'Active') === 'Active');
+      sel.innerHTML = '<option value="">-- Optional: Select Animal --</option>' +
+        active.map(a => `<option value="${a.id}">${escapeHtml(formatAnimalTitle(a))} (${escapeHtml(a.species)})</option>`).join('');
+      if (active.some(a => a.id === prev)) sel.value = prev;
+    }
+
+    function renderDiseasePhotoPreviews() {
+      const wrap = document.getElementById('dis-photo-previews');
+      const slots = [
+        { id: 'dis-photo-skin', label: 'Skin' },
+        { id: 'dis-photo-hoof', label: 'Hoof' },
+        { id: 'dis-photo-dung', label: 'Dung' },
+        { id: 'dis-photo-body', label: 'Body' }
+      ];
+      wrap.innerHTML = '';
+      slots.forEach(sl => {
+        const file = document.getElementById(sl.id).files[0];
+        if (!file) return;
+        const url = URL.createObjectURL(file);
+        const div = document.createElement('div');
+        div.className = 'rounded-lg border border-slate-200 p-1 text-center';
+        div.innerHTML = `<img src="${url}" alt="${sl.label}" class="w-full h-16 object-cover rounded" /><p class="text-[10px] font-semibold text-slate-600 mt-0.5">${sl.label}</p>`;
+        wrap.appendChild(div);
+      });
+    }
+
+    function analyzeDisease() {
+      const checked = Array.from(document.querySelectorAll('.dis-sign-cb:checked')).map(c => c.value);
+      const hasSkinPhoto = !!document.getElementById('dis-photo-skin').files[0];
+      const hasHoofPhoto = !!document.getElementById('dis-photo-hoof').files[0];
+      const hasDungPhoto = !!document.getElementById('dis-photo-dung').files[0];
+      const hasBodyPhoto = !!document.getElementById('dis-photo-body').files[0];
+
+      if (!checked.length && !hasSkinPhoto && !hasHoofPhoto && !hasDungPhoto && !hasBodyPhoto) {
+        showToast('Select at least one sign or upload a photo to analyze.');
+        return;
+      }
+
+      const conditions = [];
+      const supplements = [];
+
+      if (checked.includes('skin_lumps') || hasSkinPhoto) {
+        conditions.push({ name: 'Lumpy Skin Disease (LSD) / Viral Skin Nodules (Suspect)', note: 'Check for firm skin nodules, fever, and enlarged lymph nodes. Isolate affected animal immediately.' });
+      }
+      if (checked.includes('hoof_mouth') || hasHoofPhoto) {
+        conditions.push({ name: 'Foot-and-Mouth Disease (FMD) (Suspect)', note: 'Check interdigital hoof lesions, tongue blisters, and drooling. Isolate and disinfect shed.' });
+      }
+      if (checked.includes('goosebumps')) {
+        conditions.push({ name: 'Fever / Systemic Infection (Suspect)', note: 'Goosebumps / erect coat often indicates pyrexia. Check rectal temperature.' });
+      }
+      if (checked.includes('milk_drop') || checked.includes('hesitate_stand')) {
+        conditions.push({ name: 'Milk Fever (Hypocalcemia) / Subclinical Calcium Deficiency', note: 'Hesitation to stand and sudden milk drop around calving/lactation point to low blood calcium/phosphorus.' });
+        supplements.push({ product: 'SusCal Max', altBadge: 'Choose Either (Option 1 of 2 — do not give both)', reason: 'For milk production decline, milk fever support, and hesitation standing up' });
+        supplements.push({ product: 'DryCal P', altBadge: 'Or Alternative (Option 2 of 2 — do not give both)', reason: 'Direct alternative to SusCal Max for milk decline, milk fever, and hesitation standing up' });
+      }
+      if (checked.includes('anorexia') || checked.includes('dull_coat') || checked.includes('indigestion') || hasDungPhoto) {
+        conditions.push({ name: 'Ruminal Indigestion / Trace Mineral & Vitamin B Deficiency', note: 'Poor appetite, dull coat, or undigested feed in dung indicate rumen upset or zinc/B-vitamin deficit.' });
+        supplements.push({ product: 'Zincon B', reason: 'For anorexia, dull coat, and indigestion/rumen recovery' });
+        supplements.push({ product: 'D Guard Vet', reason: 'For anorexia, dull coat, and indigestion/rumen recovery' });
+      }
+      if (checked.includes('bloat')) {
+        conditions.push({ name: 'Ruminal Bloat / Tympany', note: 'Swollen left flank requires urgent veterinary evaluation to relieve gas buildup.' });
+      }
+      if (checked.includes('stunted') || checked.includes('milk_drop')) {
+        if (!checked.includes('milk_drop') || checked.includes('stunted')) {
+          conditions.push({ name: 'Stunted Growth / Chronic Production Deficit', note: 'May reflect helminth burden or multi-vitamin/mineral deficiency.' });
+        }
+        supplements.push({ product: 'Risevit', reason: 'For stunted growth and overall production support' });
+      }
+      if (checked.includes('diarrhea') || hasDungPhoto) {
+        conditions.push({ name: 'Enteritis / Parasitic Scours / SARA', note: 'Watery or undigested dung requires hydration support and fecal/dietary review.' });
+      }
+      if (hasBodyPhoto && !conditions.length) {
+        conditions.push({ name: 'General Posture / Body Condition Review', note: 'Pair uploaded posture photo with observed signs above for a narrower match.' });
+      }
+
+      const resBox = document.getElementById('dis-results');
+      const selectedAnimalId = document.getElementById('dis-animal-select').value;
+      resBox.classList.remove('hidden');
+      resBox.innerHTML = `
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
+          <h3 class="text-sm font-bold text-slate-900">Preliminary Assessment Results</h3>
+          ${selectedAnimalId ? '<button id="btn-save-dis-log" type="button" class="px-3 py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold">Save Assessment to Animal Log</button>' : ''}
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="space-y-2">
+            <h4 class="text-xs font-bold uppercase text-rose-700">Probable Conditions</h4>
+            ${conditions.map(c => `
+              <div class="rounded-lg border border-rose-100 bg-rose-50/50 p-2.5">
+                <p class="text-xs font-bold text-slate-900">${escapeHtml(c.name)}</p>
+                <p class="text-[11px] text-slate-600 mt-0.5">${escapeHtml(c.note)}</p>
+              </div>
+            `).join('')}
+          </div>
+
+          <div class="space-y-2">
+            <h4 class="text-xs font-bold uppercase text-emerald-700">Primary Nutritional Supplement Options</h4>
+            ${supplements.length ? supplements.map(su => `
+              <div class="rounded-lg border border-emerald-200 bg-emerald-50/60 p-2.5">
+                <div class="flex flex-wrap items-center justify-between gap-1">
+                  <p class="text-xs font-bold text-emerald-900">${escapeHtml(su.product)}</p>
+                  ${su.altBadge ? `<span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">${escapeHtml(su.altBadge)}</span>` : ''}
+                </div>
+                <p class="text-[11px] text-slate-700 mt-0.5">${escapeHtml(su.reason)}</p>
+              </div>
+            `).join('') : '<p class="text-xs text-slate-500">No specific nutritional supplement triggered for the selected signs—focus on veterinary diagnosis.</p>'}
+          </div>
+        </div>
+
+        <div class="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-950 font-medium">
+          ⚠️ <strong>Disclaimer:</strong> Always consult a registered veterinarian before administering any medicine, vaccine, or nutritional supplement.
+        </div>
+      `;
+
+      const saveBtn = document.getElementById('btn-save-dis-log');
+      if (saveBtn) {
+        saveBtn.addEventListener('click', () => {
+          const signLabels = DISEASE_SIGNS.filter(x => checked.includes(x.id)).map(x => x.label).join(', ');
+          const condNames = conditions.map(c => c.name).join('; ');
+          state.logs.push({
+            id: uid('log'),
+            animalId: selectedAnimalId,
+            date: new Date().toISOString().slice(0, 10),
+            category: 'Medication',
+            detail: `Disease Screening — Signs: ${signLabels || 'Photo uploaded'} | Suspect: ${condNames}`,
+            value: '',
+            meta: { medicine: supplements.map(s => s.product).join(', ') || 'Vet consult', reason: signLabels || 'Photo screening' }
+          });
+          saveState();
+          renderAll();
+          showToast('Assessment saved to animal health log.');
+        });
+      }
+    }
+
+    /* ---------- Event Wiring ---------- */
+    function openSidebar() {
+      document.getElementById('left-sidebar').classList.remove('-translate-x-full');
+      document.getElementById('sidebar-backdrop').classList.remove('hidden');
+    }
+    function closeSidebar() {
+      document.getElementById('left-sidebar').classList.add('-translate-x-full');
+      document.getElementById('sidebar-backdrop').classList.add('hidden');
+    }
+    document.getElementById('btn-toggle-sidebar').addEventListener('click', () => {
+      const sb = document.getElementById('left-sidebar');
+      if (sb.classList.contains('-translate-x-full')) openSidebar();
+      else closeSidebar();
+    });
+    document.getElementById('btn-close-sidebar').addEventListener('click', closeSidebar);
+    document.getElementById('sidebar-backdrop').addEventListener('click', closeSidebar);
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.addEventListener('click', () => switchTab(btn.dataset.tab)));
+    document.getElementById('btn-home-brand').addEventListener('click', () => { selectedAnimalId = null; switchTab('animals'); });
+    document.getElementById('btn-home-top').addEventListener('click', () => { selectedAnimalId = null; switchTab('animals'); });
+    document.getElementById('btn-add-animal').addEventListener('click', () => openAnimalForm(null));
+    document.getElementById('btn-add-expense').addEventListener('click', () => openTransactionForm('expense'));
+    document.getElementById('btn-add-income').addEventListener('click', () => openTransactionForm('income'));
+    document.getElementById('btn-fin-add-exp').addEventListener('click', () => openTransactionForm('expense'));
+    document.getElementById('btn-fin-add-inc').addEventListener('click', () => openTransactionForm('income'));
+    document.getElementById('btn-export-finance-pdf').addEventListener('click', exportFinancePDF);
+
+    document.getElementById('modal-close').addEventListener('click', closeModal);
+    document.getElementById('modal-overlay').addEventListener('click', e => { if (e.target.id === 'modal-overlay') closeModal(); });
+
+    ['filter-species', 'filter-purpose', 'filter-origin', 'filter-status'].forEach(id => document.getElementById(id).addEventListener('change', renderAnimals));
+    document.getElementById('filter-tx-type').addEventListener('change', renderFinance);
+    document.getElementById('filter-tx-cat').addEventListener('change', renderFinance);
+    document.getElementById('filter-log-cat').addEventListener('change', renderLogsTable);
+
+    document.getElementById('btn-reset-demo').addEventListener('click', () => {
+      openConfirmDelete('Reset all data back to starter sample records?', () => {
+        state = getDefaultState();
+        selectedAnimalId = null;
+        saveState();
+        switchTab('animals');
+        renderAll();
+        showToast('Sample data restored.');
+      });
+    });
+
+    function downloadStandaloneApp() {
+      const htmlContent = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+      const blob = new Blob([htmlContent], { type: 'text/html;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Rakhal_Livestock_Manager.html';
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('App HTML file downloaded.');
+    }
+    document.getElementById('btn-download-app-sidebar').addEventListener('click', downloadStandaloneApp);
+    document.getElementById('btn-download-app-main').addEventListener('click', downloadStandaloneApp);
+
+    document.getElementById('btn-backup-export').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `livestock_backup_${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('Backup downloaded.');
+    });
+
+    document.getElementById('input-backup-import').addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const imported = JSON.parse(reader.result);
+          if (imported && Array.isArray(imported.animals) && Array.isArray(imported.logs)) {
+            if (!Array.isArray(imported.transactions)) imported.transactions = [];
+            state = imported;
+            selectedAnimalId = null;
+            saveState();
+            renderAll();
+            showToast('Backup restored.');
+          } else showToast('Invalid backup format.');
+        } catch (err) { showToast('Could not read backup file.'); }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    });
+
+    document.addEventListener('click', e => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+      const action = btn.dataset.action;
+      const id = btn.dataset.id;
+
+      if (action === 'back-home') { selectedAnimalId = null; switchTab('animals'); }
+      else if (action === 'open-profile') openAnimalProfile(id);
+      else if (action === 'add-log') openLogForm(id);
+      else if (action === 'edit-animal') openAnimalForm(id);
+      else if (action === 'pdf-animal') exportAnimalPDF(id);
+      else if (action === 'delete-animal') {
+        openConfirmDelete('Delete this animal profile and all its records?', () => {
+          state.animals = state.animals.filter(a => a.id !== id);
+          state.logs = state.logs.filter(l => l.animalId !== id);
+          selectedAnimalId = null;
+          saveState();
+          switchTab('animals');
+          renderAll();
+          showToast('Animal deleted.');
+        });
+      } else if (action === 'edit-log') {
+        const log = state.logs.find(l => l.id === id);
+        if (log) openLogForm(log.animalId, log.id);
+      } else if (action === 'delete-log') {
+        openConfirmDelete('Delete this record?', () => {
+          state.logs = state.logs.filter(l => l.id !== id);
+          state.transactions = state.transactions.filter(t => t.linkedLogId !== id);
+          saveState();
+          renderAll();
+          showToast('Record deleted.');
+        });
+      } else if (action === 'edit-tx') {
+        openTransactionForm('expense', id);
+      } else if (action === 'delete-tx') {
+        openConfirmDelete('Delete this financial entry?', () => {
+          state.transactions = state.transactions.filter(t => t.id !== id);
+          saveState();
+          renderAll();
+          showToast('Financial entry deleted.');
+        });
+      }
+    });
+
+    document.getElementById('btn-analyze-disease').addEventListener('click', analyzeDisease);
+    document.getElementById('btn-clear-disease').addEventListener('click', () => {
+      document.querySelectorAll('.dis-sign-cb').forEach(c => { c.checked = false; });
+      ['skin', 'hoof', 'dung', 'body'].forEach(sl => { document.getElementById('dis-photo-' + sl).value = ''; });
+      document.getElementById('dis-photo-previews').innerHTML = '';
+      document.getElementById('dis-results').classList.add('hidden');
+    });
+
+    function updateSyncStatusBadge(text, tone = 'neutral') {
+      const el = document.getElementById('cloud-sync-status');
+      if (!el) return;
+      el.textContent = text;
+      const cls = {
+        neutral: 'bg-slate-100 text-slate-700',
+        ok: 'bg-emerald-100 text-emerald-800',
+        warn: 'bg-amber-100 text-amber-800',
+        err: 'bg-rose-100 text-rose-800'
+      }[tone] || 'bg-slate-100 text-slate-700';
+      el.className = 'text-[11px] font-semibold px-2.5 py-1 rounded-full ' + cls;
+    }
+
+    async function pushToCloud(silent = false) {
+      const url = (document.getElementById('cloud-sync-url')?.value || syncConfig.url || '').trim();
+      if (!url || !url.startsWith('https://')) {
+        if (!silent) showToast('Please enter a valid https:// Cloud Sync URL first.');
+        return;
+      }
+      updateSyncStatusBadge('Syncing to cloud...', 'warn');
+      try {
+        const isFirebase = url.includes('firebaseio.com') || url.endsWith('.json');
+        const res = await fetch(url, {
+          method: isFirebase ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(state)
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const stamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        syncConfig.url = url;
+        syncConfig.lastSynced = stamp;
+        saveSyncSettings(syncConfig);
+        updateSyncStatusBadge('Synced at ' + stamp, 'ok');
+        if (!silent) showToast('Farm data synced to cloud.');
+      } catch (err) {
+        updateSyncStatusBadge('Sync failed (check URL / offline)', 'err');
+        if (!silent) showToast('Could not reach Cloud Sync URL. Data is still saved locally.');
+      }
+    }
+
+    async function pullFromCloud(silent = false) {
+      const url = (document.getElementById('cloud-sync-url')?.value || syncConfig.url || '').trim();
+      if (!url || !url.startsWith('https://')) {
+        if (!silent) showToast('Please enter a valid https:// Cloud Sync URL first.');
+        return;
+      }
+      updateSyncStatusBadge('Pulling from cloud...', 'warn');
+      try {
+        const res = await fetch(url, { method: 'GET' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const imported = await res.json();
+        if (imported && Array.isArray(imported.animals) && Array.isArray(imported.logs)) {
+          if (!Array.isArray(imported.transactions)) imported.transactions = [];
+          state = imported;
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+          const stamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          syncConfig.url = url;
+          syncConfig.lastSynced = stamp;
+          saveSyncSettings(syncConfig);
+          updateSyncStatusBadge('Pulled at ' + stamp, 'ok');
+          renderAll();
+          if (!silent) showToast('Latest farm data pulled from cloud.');
+        } else {
+          updateSyncStatusBadge('Cloud is empty — Push first', 'warn');
+          if (!silent) showToast('No farm data in cloud yet. Click "Sync Now (Push to Cloud)" first.');
+        }
+      } catch (err) {
+        updateSyncStatusBadge('Pull failed (check URL / offline)', 'err');
+        if (!silent) showToast('Could not pull from Cloud Sync URL.');
+      }
+    }
+
+    function initCloudSyncUI() {
+      const urlIn = document.getElementById('cloud-sync-url');
+      const autoCb = document.getElementById('cloud-auto-sync');
+      urlIn.value = syncConfig.url || '';
+      autoCb.checked = !!syncConfig.autoSync;
+      if (syncConfig.url) {
+        updateSyncStatusBadge(syncConfig.lastSynced ? 'Last synced: ' + syncConfig.lastSynced : 'Ready to sync', 'ok');
+      }
+
+      document.getElementById('btn-save-sync-url').addEventListener('click', () => {
+        syncConfig.url = urlIn.value.trim();
+        syncConfig.autoSync = autoCb.checked;
+        saveSyncSettings(syncConfig);
+        updateSyncStatusBadge(syncConfig.url ? 'Settings saved' : 'Not configured', syncConfig.url ? 'ok' : 'neutral');
+        showToast('Cloud Sync settings saved.');
+      });
+      autoCb.addEventListener('change', () => {
+        syncConfig.url = urlIn.value.trim();
+        syncConfig.autoSync = autoCb.checked;
+        saveSyncSettings(syncConfig);
+      });
+      document.getElementById('btn-cloud-push').addEventListener('click', () => pushToCloud(false));
+      document.getElementById('btn-cloud-pull').addEventListener('click', () => pullFromCloud(false));
+      document.getElementById('btn-toggle-script-help').addEventListener('click', () => {
+        document.getElementById('cloud-script-help').classList.toggle('hidden');
+      });
+
+      if (syncConfig.url && syncConfig.autoSync) {
+        pullFromCloud(true);
+      }
+    }
+
+    /* ---------- Supabase Multi-User Auth & Auto-Sync ---------- */
+    const DEFAULT_SUPABASE_URL = '';
+    const DEFAULT_SUPABASE_ANON_KEY = '';
+    const SB_CFG_KEY = 'rakhal_supabase_cfg_v1';
+
+    let sbClient = null;
+    let sbCurrentUser = null;
+
+    function loadSupabaseConfig() {
+      try {
+        const raw = localStorage.getItem(SB_CFG_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed.url && parsed.anonKey) return parsed;
+        }
+      } catch (e) {}
+      return { url: DEFAULT_SUPABASE_URL, anonKey: DEFAULT_SUPABASE_ANON_KEY };
+    }
+
+    function saveSupabaseConfig(url, anonKey) {
+      try {
+        localStorage.setItem(SB_CFG_KEY, JSON.stringify({ url, anonKey }));
+      } catch (e) {}
+    }
+
+    function updateSupabaseAuthUI() {
+      const badge = document.getElementById('sb-auth-badge');
+      const outView = document.getElementById('sb-logged-out-view');
+      const inView = document.getElementById('sb-logged-in-view');
+      const emailSpan = document.getElementById('sb-user-email');
+      const sbUserBox = document.getElementById('sb-user-box');
+
+      if (sbCurrentUser) {
+        const label = sbCurrentUser.email || sbCurrentUser.user_metadata?.full_name || sbCurrentUser.id.slice(0, 8);
+        badge.textContent = 'Signed In • Auto-Sync ON';
+        badge.className = 'text-[11px] font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800';
+        outView.classList.add('hidden');
+        inView.classList.remove('hidden');
+        emailSpan.textContent = label;
+        sbUserBox.textContent = '🟢 ' + label;
+      } else {
+        badge.textContent = sbClient ? 'Ready to Sign In' : 'Not Configured';
+        badge.className = 'text-[11px] font-semibold px-2.5 py-1 rounded-full ' + (sbClient ? 'bg-sky-100 text-sky-800' : 'bg-slate-100 text-slate-700');
+        outView.classList.remove('hidden');
+        inView.classList.add('hidden');
+        sbUserBox.textContent = 'Not signed in (Local mode)';
+      }
+    }
+
+    async function pushToSupabase(silent = false) {
+      if (!sbClient || !sbCurrentUser) {
+        if (!silent) showToast('Please sign in first.');
+        return;
+      }
+      try {
+        const { error } = await sbClient
+          .from('farm_profiles')
+          .upsert({
+            user_id: sbCurrentUser.id,
+            farm_data: state,
+            updated_at: new Date().toISOString()
+          }, { onConflict: 'user_id' });
+        if (error) throw error;
+        const stamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const note = document.getElementById('sb-last-sync-note');
+        if (note) note.textContent = 'Last backed up to Supabase at ' + stamp;
+        if (!silent) showToast('Synced to your Supabase account.');
+      } catch (err) {
+        if (!silent) showToast('Supabase sync error: ' + (err.message || 'Check farm_profiles table'));
+      }
+    }
+
+    async function pullFromSupabase(silent = false) {
+      if (!sbClient || !sbCurrentUser) return;
+      try {
+        const { data, error } = await sbClient
+          .from('farm_profiles')
+          .select('farm_data, updated_at')
+          .eq('user_id', sbCurrentUser.id)
+          .maybeSingle();
+        if (error) throw error;
+        if (data && data.farm_data && Array.isArray(data.farm_data.animals)) {
+          state = data.farm_data;
+          if (!Array.isArray(state.transactions)) state.transactions = [];
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+          renderAll();
+          const stamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          const note = document.getElementById('sb-last-sync-note');
+          if (note) note.textContent = 'Restored from your Supabase account at ' + stamp;
+          if (!silent) showToast('Farm data restored from your Supabase account.');
+        } else {
+          await pushToSupabase(true);
+        }
+      } catch (err) {
+        if (!silent) showToast('Supabase pull error: ' + (err.message || 'Check table setup'));
+      }
+    }
+
+    function connectSupabaseClient(url, anonKey) {
+      if (!window.supabase || !url || !anonKey) {
+        sbClient = null;
+        updateSupabaseAuthUI();
+        return;
+      }
+      try {
+        sbClient = window.supabase.createClient(url, anonKey);
+        sbClient.auth.getSession().then(({ data }) => {
+          sbCurrentUser = data?.session?.user || null;
+          updateSupabaseAuthUI();
+          if (sbCurrentUser) pullFromSupabase(true);
+        });
+        sbClient.auth.onAuthStateChange((_event, session) => {
+          const prevId = sbCurrentUser?.id;
+          sbCurrentUser = session?.user || null;
+          updateSupabaseAuthUI();
+          if (sbCurrentUser && sbCurrentUser.id !== prevId) {
+            pullFromSupabase(true);
+          }
+        });
+      } catch (err) {
+        showToast('Invalid Supabase URL or Key.');
+      }
+    }
+
+    function initSupabaseUI() {
+      const cfg = loadSupabaseConfig();
+      const urlIn = document.getElementById('sb-url-input');
+      const keyIn = document.getElementById('sb-key-input');
+      urlIn.value = cfg.url || '';
+      keyIn.value = cfg.anonKey || '';
+
+      if (cfg.url && cfg.anonKey) {
+        connectSupabaseClient(cfg.url, cfg.anonKey);
+      } else {
+        updateSupabaseAuthUI();
+      }
+
+      document.getElementById('btn-open-auth-sidebar').addEventListener('click', () => switchTab('alerts'));
+      document.getElementById('btn-toggle-sb-sql').addEventListener('click', () => {
+        document.getElementById('sb-sql-guide').classList.toggle('hidden');
+      });
+
+      document.getElementById('btn-save-sb-config').addEventListener('click', () => {
+        const u = urlIn.value.trim();
+        const k = keyIn.value.trim();
+        if (!u.startsWith('https://') || !k) {
+          showToast('Please enter both your https:// Supabase Project URL and Anon Key.');
+          return;
+        }
+        saveSupabaseConfig(u, k);
+        connectSupabaseClient(u, k);
+        showToast('Supabase project connected.');
+      });
+
+      document.getElementById('btn-sb-google').addEventListener('click', async () => {
+        if (!sbClient) { showToast('Connect your Supabase Project URL and Anon Key first.'); return; }
+        const { error } = await sbClient.auth.signInWithOAuth({
+          provider: 'google',
+          options: { redirectTo: window.location.href }
+        });
+        if (error) showToast('Google login error: ' + error.message);
+      });
+
+      document.getElementById('btn-sb-facebook').addEventListener('click', async () => {
+        if (!sbClient) { showToast('Connect your Supabase Project URL and Anon Key first.'); return; }
+        const { error } = await sbClient.auth.signInWithOAuth({
+          provider: 'facebook',
+          options: { redirectTo: window.location.href }
+        });
+        if (error) showToast('Facebook login error: ' + error.message);
+      });
+
+      document.getElementById('btn-sb-email-login').addEventListener('click', async () => {
+        if (!sbClient) { showToast('Connect your Supabase Project URL and Anon Key first.'); return; }
+        const email = document.getElementById('sb-email').value.trim();
+        const password = document.getElementById('sb-password').value;
+        if (!email || !password) { showToast('Enter your email and password.'); return; }
+        const { error } = await sbClient.auth.signInWithPassword({ email, password });
+        if (error) showToast('Sign in failed: ' + error.message);
+        else showToast('Signed in! Syncing your farm data...');
+      });
+
+      document.getElementById('btn-sb-email-signup').addEventListener('click', async () => {
+        if (!sbClient) { showToast('Connect your Supabase Project URL and Anon Key first.'); return; }
+        const email = document.getElementById('sb-email').value.trim();
+        const password = document.getElementById('sb-password').value;
+        if (!email || password.length < 6) { showToast('Enter a valid email and a password of at least 6 characters.'); return; }
+        const { error } = await sbClient.auth.signUp({ email, password });
+        if (error) showToast('Sign up failed: ' + error.message);
+        else showToast('Account created! Check your email if confirmation is enabled, or sign in.');
+      });
+
+      document.getElementById('btn-sb-sync-now').addEventListener('click', () => pushToSupabase(false));
+      document.getElementById('btn-sb-pull-now').addEventListener('click', () => pullFromSupabase(false));
+      document.getElementById('btn-sb-logout').addEventListener('click', async () => {
+        if (sbClient) await sbClient.auth.signOut();
+        sbCurrentUser = null;
+        updateSupabaseAuthUI();
+        showToast('Signed out.');
+      });
+    }
+
+    window.closeModal = closeModal;
+    initDiseaseUI();
+    initCloudSyncUI();
+    initSupabaseUI();
+    renderAll();
+
+  </script>
+</body>
+</html>
